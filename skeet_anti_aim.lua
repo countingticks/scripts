@@ -91,18 +91,25 @@ local misc_fakeduck_key = ui_reference("RAGE", "Other", "Duck peek assist")
 local misc_leg_movement = ui_reference("AA", "Other", "Leg movement")
 local fl_amount = ui_reference("AA", "Fake lag", "Amount")
 local fl_variance = ui_reference("AA", "Fake lag", "Variance")
+local fl_limit = ui_reference("AA", "Fake lag", "Limit")
+
+local off_jitter_degree = {
+    [0] = "Off"
+}
 
 local enable_aa = ui.new_checkbox("lua", "b", "Anti aim")
 local auto_direction = ui.new_checkbox("lua", "b", "Auto direction")
 local auto_dir_mode = ui.new_combobox("lua", "b", "Auto direction mode", "Safe head", "Peek out")
 local anti_resolve = ui.new_checkbox("lua", "b", "Anti resolve")
-local off_jitter = ui.new_slider("lua", "b", "Offset jitter", 0, 120, 20)
+local off_jitter = ui.new_slider("lua", "b", "Offset jitter", 0, 120, 10, true, "°", 1, off_jitter_degree)
 local edge_yaw_detection = ui.new_checkbox("lua", "b", "Edge yaw detection")
 local legit_aa_on_e = ui.new_checkbox("lua", "b", "Legit aa on e")
 local fake_lag = ui.new_checkbox("lua", "b", "Fake lag")
 local leg_movement = ui.new_checkbox("lua", "b", "Leg movement")
 
 local enemyclosesttocrosshair = nil
+local desync_standing = false
+local enemy_shot_time = {}
 
 local player_mt = {}
 local function player(ent_index)
@@ -110,8 +117,8 @@ local function player(ent_index)
 	player_object.ent_index = ent_index
 	player_object.desync = 60 
 	player_object.round_start_desync = 60
-	player_object.old_desync_amounts = { } -- pt anti bruteforce
-	player_object.side = 1 -- 1 sau -1 
+	player_object.old_desync_amounts = { } -- PT ANTI BRUTEFORCE
+	player_object.side = 1 -- 1 SAU -1 
 	player_object.invert_side = false 
 	player_object.last_shot_time = 0
 	setmetatable(player_object,player_mt)
@@ -120,50 +127,8 @@ end
 
 player_data = {}
 for i = 1 , 64 do 
-	player_data[i] = player(i) -- aici initializam toti playerii dar unii o sa fie NIL pt ca nu sunt 64 
+	player_data[i] = player(i) -- AICI INITIALIZAM TOTI PLAYERII DAR UNII O SA FIE NIL PT CA NU SUNT 64
 end 
-
-local function set_left()
-	ui_set(aa_body_yaw, "static")
-	ui_set(aa_body_yaw_slider, 180)
-    ui_set(aa_lby, "Eye yaw") 
-	ui_set(aa_yaw_jitter, "off")
-	ui_set(aa_yaw_jitter_offset, 0)
-end
-
-local function set_right()
-	ui_set(aa_body_yaw, "static")
-	ui_set(aa_body_yaw_slider, -180)
-    ui_set(aa_lby, "Eye yaw") 
-	ui_set(aa_yaw_jitter, "off")
-	ui_set(aa_yaw_jitter_offset, 0)
-end
-
-local function set_normal_aa()
-	ui_set(aa_yaw_offset , 0)
-	ui_set(aa_fake_limit , 60)
-	ui_set(aa_body_yaw, "static")
-	ui_set(aa_body_yaw_slider, 180)
-	if not ui_get(auto_direction) then
-		ui_set(aa_yaw_jitter,"off")
-	else
-		if ui_get(off_jitter) > 0 then
-			ui_set(aa_yaw_jitter, "offset")
-			ui_set(aa_yaw_jitter_offset, -ui_get(off_jitter))
-		else
-			ui_set(aa_yaw_jitter,"off")
-		end
-	end
-	ui_set(aa_lby, "Eye yaw") 
-end 
-
-local function set_fake_duck()
-	ui_set(aa_body_yaw, "opposite")
-    ui_set(aa_lby, "Eye yaw") 
-	ui_set(aa_yaw_jitter, "off")
-	ui_set(aa_yaw_jitter_offset, 0)
-	ui_set(aa_fake_limit , 0)
-end
 
 local function get_velocity(player)
 	local x,y,z = entity_get_prop(player, "m_vecVelocity")
@@ -241,6 +206,16 @@ local function in_air(player)
 	return false
 end
 
+local function is_crouching(player)
+	local flags = entity_get_prop(player, "m_fFlags")
+	
+	if bit_band(flags, 4) == 4 then
+		return true
+	end
+	
+	return false
+end
+
 local function can_enemy_hit_head(ent)
 	if ent == nil then return end
 	if in_air(ent) then return false end
@@ -251,7 +226,7 @@ local function can_enemy_hit_head(ent)
 	local hx,hy,hz = entity_hitbox_position(entity_get_local_player(), 0) 
 	local _, head_dmg = client_trace_bullet(ent, origin_x, origin_y, origin_z, hx, hy, hz)
 		
-	return head_dmg ~= nil and head_dmg > 25
+	return head_dmg ~= nil and head_dmg > 15
 end
 
 local function extrapolate(player,ticks,x,y,z , xv ,yv ,zv)
@@ -261,7 +236,102 @@ local function extrapolate(player,ticks,x,y,z , xv ,yv ,zv)
 	local new_y = y + globals.tickinterval() * yv  * ticks
 	local new_z = z + globals.tickinterval() * zv  * ticks
 	return new_x,new_y,new_z
+end
+
+local function set_crouching_aa_backwards()
+	local velo = get_velocity(entity_get_local_player())
+	local crouching_ct = is_crouching(entity_get_local_player()) and entity_get_prop(entity_get_local_player(),"m_iTeamNum") == 3
+	local crouching_t = is_crouching(entity_get_local_player()) and entity_get_prop(entity_get_local_player(),"m_iTeamNum") == 2
+
+	if ui_get(aa_fake_limit) ~= 0 then
+		if crouching_t then
+			ui_set(aa_yaw_offset, 13)
+			ui_set(aa_fake_limit, 58)
+		elseif crouching_ct then
+			ui_set(aa_yaw_offset, 0)
+			ui_set(aa_fake_limit, client_random_int(32,35))
+		elseif ui_get(fake_walk) and velo > 5 then
+			ui_set(aa_yaw_offset, 17)
+			ui_set(aa_fake_limit, 23)
+		else
+			ui_set(aa_yaw_offset, 15)
+			ui_set(aa_fake_limit, 33)
+		end
+	end
+end
+
+local function set_crouching_aa_sides()
+	local velo = get_velocity(entity_get_local_player())
+	local crouching_ct = is_crouching(entity_get_local_player()) and entity_get_prop(entity_get_local_player(),"m_iTeamNum") == 3
+	local crouching_t = is_crouching(entity_get_local_player()) and entity_get_prop(entity_get_local_player(),"m_iTeamNum") == 2
+
+	if ui_get(aa_fake_limit) ~= 0 then
+		if crouching_t then
+			ui_set(aa_yaw_offset, 13)
+			ui_set(aa_fake_limit, 58)
+		elseif crouching_ct then
+			ui_set(aa_yaw_offset, 0)
+			ui_set(aa_fake_limit, client_random_int(32,35))
+		elseif ui_get(fake_walk) and velo > 5 then
+			ui_set(aa_yaw_offset, 17)
+			ui_set(aa_fake_limit, 23)
+		else
+			ui_set(aa_yaw_offset, 0)
+			ui_set(aa_fake_limit, 60)
+		end
+	end
+end
+
+local function set_left()
+	set_crouching_aa_sides()
+	ui_set(aa_body_yaw, "static")
+	ui_set(aa_body_yaw_slider, 180)
+    ui_set(aa_lby, "Eye yaw") 
+	ui_set(aa_yaw_jitter, "off")
+	ui_set(aa_yaw_jitter_offset, 0)
+end
+
+local function set_right()
+	set_crouching_aa_sides()
+	ui_set(aa_body_yaw, "static")
+	ui_set(aa_body_yaw_slider, -180)
+    ui_set(aa_lby, "Eye yaw") 
+	ui_set(aa_yaw_jitter, "off")
+	ui_set(aa_yaw_jitter_offset, 0)
+end
+
+local function set_normal_aa()
+	set_crouching_aa_backwards()
+	ui_set(aa_body_yaw, "jitter")
+	ui_set(aa_body_yaw_slider, 109)
+	if not ui_get(auto_direction) then
+		ui_set(aa_yaw_jitter,"off")
+	else
+		if ui_get(off_jitter) > 0 then
+			ui_set(aa_yaw_jitter, "offset")
+			ui_set(aa_yaw_jitter_offset, -ui_get(off_jitter))
+		else
+			ui_set(aa_yaw_jitter,"off")
+		end
+	end
+	ui_set(aa_lby, "Eye yaw") 
 end 
+
+local function set_fake_duck()
+	ui_set(aa_body_yaw, "opposite")
+    ui_set(aa_lby, "Eye yaw") 
+	ui_set(aa_yaw_jitter, "off")
+	ui_set(aa_yaw_jitter_offset, 0)
+	ui_set(aa_fake_limit , 27)
+end
+
+local function set_legit_aa()
+	ui_set(aa_body_yaw, "static")
+	ui_set(aa_body_yaw_slider, 180)
+	ui_set(aa_yaw_jitter, "off")
+	ui_set(aa_yaw_jitter_offset, 0)
+	ui_set(aa_fake_limit , 60)
+end
 
 local legit_aa_counter = 0 
 local current_side = 0
@@ -292,8 +362,7 @@ local function set_antiaim(cmd)
                 cmd.in_use = 0
 
                 ui_set(aa_yaw, "Off")
-                ui_set(aa_pitch , "Off")
-                ui_set(aa_fake_limit,60)
+				ui_set(aa_pitch , "Off")
 
                 using_legit_aa = true 
             end 
@@ -325,7 +394,7 @@ local function set_antiaim(cmd)
 			end
 		end 
 		if(closest_enemy ~= -1) and not ui_get(misc_fakeduck_key) and not can_enemy_hit_head(enemyclosesttocrosshair) then 
-			ui_set(aa_edge_yaw,not is_visible(lx,ly,lz,closest_enemy) and not jumping)
+			ui_set(aa_edge_yaw,not is_visible(lx,ly,lz,closest_enemy) and not jumping and not using_legit_aa)
 		end
 	end
 	if(player_list ~= nil and ui_get(auto_direction)) and not ui_get(misc_fakeduck_key) then
@@ -370,12 +439,22 @@ local function set_antiaim(cmd)
 								else
 									set_left()
 								end
+
+								if ui_get(aa_fake_limit) ~= 0 and speed < 5 then
+									desync_standing = true
+									ui_set(aa_fake_limit, 15)
+								else 
+									desync_standing = false
+								end 
 							else
 								set_fake_duck()
 							end
 							current_side = freestand_side
 							enemy_data.side = freestand_side
-
+							
+							if using_legit_aa then
+								set_legit_aa()
+							end
 							return
 						end 
 					end
@@ -392,6 +471,10 @@ local function set_antiaim(cmd)
 			set_normal_aa()
 		end
 		current_side = 0
+	end
+	
+	if using_legit_aa then
+		set_legit_aa()
 	end
 end 
 
@@ -455,10 +538,9 @@ client.set_event_callback("bullet_impact", function(data)
 	else 
 		player_data[shooter].invert_side = not player_data[shooter].invert_side
 	end 
-	-- miss 0 grade sau miss freestand = ei cred ca tu ai peek out si ca defapt desyncu tau e ascuns si faci peek cu realu
- end)
+	-- MISS 0 GRADE SAU MISS FREESTAND = EI CRED CA TU AI PEEK OUT SI CA DEFAPT DESYNCU TAU E ASCUNS SI FACI PEEK CU REALU
+end)
 
- 
 local hitgroup_names = { "generic", "head", "chest", "stomach", "left arm", "right arm", "left leg", "right leg", "neck", "?", "gear" }
 
 client.set_event_callback("player_hurt", function(data)
@@ -478,10 +560,10 @@ client.set_event_callback("player_hurt", function(data)
 	if player_data[shooter] == nil then return end
 
 	if(group ~= "head") then 
-		player_data[shooter].invert_side = not player_data[shooter].invert_side -- they hit body so invert back
+		player_data[shooter].invert_side = not player_data[shooter].invert_side -- THEY HIT BODY SO INVERT BACK
 		player_data[shooter].desync = 0
 	else 
-		player_data[shooter].invert_side = not player_data[shooter].invert_side -- invert cuz they hit head
+		player_data[shooter].invert_side = not player_data[shooter].invert_side -- INVERT CUZ THEY HIT HEAD
 		local old_desync = player_data[shooter].old_desync_amounts[#player_data[shooter].old_desync_amounts]
 
 		if(old_desync == 0) then 
@@ -537,6 +619,7 @@ client_set_event_callback("bomb_defused" , function(e)
 	end
 
 end)
+
 local flip = true
 
 local function can_enemy_shoot_legs()
@@ -575,6 +658,7 @@ local function on_run_command()
 	local lp_vel = get_velocity(lp)
 	local jumping = (client_key_state(0x20) and lp_vel > 100) or in_air(lp)
 	local hit = can_enemy_shoot_legs()
+	local fakeduck = ui_get(misc_fakeduck_key)
 
 	-- LEGS 
 	if ui_get(leg_movement) then
@@ -589,12 +673,18 @@ local function on_run_command()
 
 	-- FAKE LAG 
 	if ui_get(fake_lag) then
-		if hit or jumping then
-			ui_set(fl_amount,"Fluctuate")	
-			ui_set(fl_variance, 0)
+		if not fakeduck then
+			if hit or jumping then
+				ui_set(fl_amount,"Fluctuate")	
+				ui_set(fl_variance, 0)
+				ui_set(fl_limit, 14)
+			else
+				ui_set(fl_amount,"Maximum")
+				ui_set(fl_variance, 15)
+				ui_set(fl_limit, 10)
+			end
 		else
-			ui_set(fl_amount,"Dynamic")
-			ui_set(fl_variance, 15)
+			ui_set(fl_limit, 14)
 		end
 	end
 end
@@ -607,19 +697,23 @@ local function on_paint()
  	center_x = center_x / 2
 	center_y = center_y / 2
 	 
-	local r,g,b,a = 89,119,239,255
-
+	local r,g,b
 	if ui_get(aa_fake_limit) < 5 then
-		r,g,b,a = 0,100,0,255
+		r,g,b = 0,100,0
+	elseif desync_standing then
+		r,g,b = 235,64,52
+	else
+		r,g,b = 89,119,239
 	end
+	local alpha = 255
 
-	if(current_side == 1) then -- right 
+	if(current_side == 1) then -- RIGHT
 		client.draw_text(c, center_x - 60, center_y, 163,160,163,255, "cb+", 0, "⯇")
-		client.draw_text(c, center_x + 60, center_y, r,g,b,a, "cb+", 0, "⯈")
-	else if(current_side == -1) then-- left
-		client.draw_text(c, center_x - 60, center_y, r,g,b,a, "cb+", 0, "⯇")
+		client.draw_text(c, center_x + 60, center_y, r,g,b,alpha, "cb+", 0, "⯈")
+	else if(current_side == -1) then -- LEFT
+		client.draw_text(c, center_x - 60, center_y, r,g,b,alpha, "cb+", 0, "⯇")
 		client.draw_text(c, center_x + 60, center_y, 163,160,163,255, "cb+", 0, "⯈")
-	else -- not using auto direction
+	else -- BACKWARDS
 		client.draw_text(c, center_x - 60, center_y, 163,160,163,255, "cb+", 0, "⯇")
 		client.draw_text(c, center_x + 60, center_y, 163,160,163,255, "cb+", 0, "⯈")
 	end
