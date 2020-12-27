@@ -149,7 +149,7 @@ local evasion_last_ent = nil
 local evasion_vis_ticks = 0
 local maxspeed = 0
 
-function contains(table, val)
+local function contains(table, val)
     for i = 1, #table do
         if table[i] == val then
             return true
@@ -158,11 +158,11 @@ function contains(table, val)
     return false
 end
 
-function vec3_dot(ax, ay, az, bx, by, bz)
+local function vec3_dot(ax, ay, az, bx, by, bz)
 	return ax*bx + ay*by + az*bz
 end
 
-function vec3_normalize(x, y, z)
+local function vec3_normalize(x, y, z)
 	local len = math_sqrt(x * x + y * y + z * z)
 	if len == 0 then
 		return 0, 0, 0
@@ -171,13 +171,13 @@ function vec3_normalize(x, y, z)
 	return x*r, y*r, z*r
 end
 
-function angle_to_vec(pitch, yaw)
+local function angle_to_vec(pitch, yaw)
 	local p, y = math_rad(pitch), math_rad(yaw)
 	local sp, cp, sy, cy = math_sin(p), math_cos(p), math_sin(y), math_cos(y)
 	return cp*cy, cp*sy, -sp
 end
 
-function get_fov_cos(ent, vx,vy,vz, lx,ly,lz)
+local function get_fov_cos(ent, vx,vy,vz, lx,ly,lz)
 	local ox,oy,oz = entity_get_prop(ent, "m_vecOrigin")
 	if ox == nil then
 		return -1
@@ -187,7 +187,7 @@ function get_fov_cos(ent, vx,vy,vz, lx,ly,lz)
 	return vec3_dot(dx,dy,dz, vx,vy,vz)
 end
 
-function Angle_Vector(angle_x, angle_y)
+local function Angle_Vector(angle_x, angle_y)
 	local sp, sy, cp, cy = nil
     sy = math_sin(math_rad(angle_y));
     cy = math_cos(math_rad(angle_y));
@@ -196,12 +196,12 @@ function Angle_Vector(angle_x, angle_y)
     return cp * cy, cp * sy, -sp;
 end
 
-function CalcAngle(localplayerxpos, localplayerypos, enemyxpos, enemyypos)
+local function CalcAngle(localplayerxpos, localplayerypos, enemyxpos, enemyypos)
    local relativeyaw = math_atan( (localplayerypos - enemyypos) / (localplayerxpos - enemyxpos) )
     return relativeyaw * 180 / math.pi
 end
 
-function normalise_angle(angle)
+local function normalise_angle(angle)
 	angle =  angle % 360 
 	angle = (angle + 360) % 360
 	if (angle > 180)  then
@@ -210,7 +210,7 @@ function normalise_angle(angle)
 	return angle
 end
 
-function GetClosestPoint(A, B, P)
+local function GetClosestPoint(A, B, P)
    local a_to_p = { P[1] - A[1], P[2] - A[2] }
    local a_to_b = { B[1] - A[1], B[2] - A[2] }
    local ab = a_to_b[1]^2 + a_to_b[2]^2
@@ -220,17 +220,17 @@ function GetClosestPoint(A, B, P)
    return { A[1] + a_to_b[1]*t, A[2] + a_to_b[2]*t }
 end
 
-function time_to_ticks(dt)
+local function time_to_ticks(dt)
 	return math_floor(0.5 + dt / globals_tickinterval() - 3)
 end
 
-function clamp(val, lower, upper)
+local function clamp(val, lower, upper)
     assert(val and lower and upper, "not very useful error message here")
     if lower > upper then lower, upper = upper, lower end
     return math_max(lower, math_min(upper, val))
 end
 
-function get_lerp_time()
+local function get_lerp_time()
 	local ud_rate = client_get_cvar("cl_updaterate")
 	
 	local min_ud_rate = client_get_cvar("sv_minupdaterate")
@@ -257,7 +257,7 @@ function get_lerp_time()
 	return math_max(lerp, (ratio / ud_rate));
 end
 
-function is_record_valid(player_time,ms)
+local function is_record_valid(player_time,ms)
 	local correct = 0
 	local sv_maxunlag = 0.2
 	
@@ -274,7 +274,7 @@ function is_record_valid(player_time,ms)
 	return true
 end
 
-function extrapolate_position(xpos,ypos,zpos,ticks,player)
+local function extrapolate_position(xpos,ypos,zpos,ticks,player)
 	local x,y,z = entity_get_prop(player, "m_vecVelocity")
 	for i=0, ticks do
 		xpos =  xpos + (x*globals_tickinterval())
@@ -283,26 +283,26 @@ function extrapolate_position(xpos,ypos,zpos,ticks,player)
 	end
 	return xpos,ypos,zpos
 end
---
-function get_velocity(player)
+
+local function get_velocity(player)
 	local x,y,z = entity_get_prop(player, "m_vecVelocity")
 	if x == nil then return end
 	return math_sqrt(x*x + y*y + z*z)
 end
 
-function get_max_body_yaw(player)
+local function get_max_body_yaw(player)
 	local x,y,z = entity_get_prop(player, "m_vecVelocity")
 	return 58 - 58 * math_sqrt(x ^ 2 + y ^ 2) / 580
 end
 
-function get_body_yaw(player)
+local function get_body_yaw(player)
 	local _, model_yaw = entity_get_prop(player, "m_angAbsRotation")
 	local _, eye_yaw = entity_get_prop(player, "m_angEyeAngles")
 	if model_yaw == nil or eye_yaw ==nil then return 0 end
 	return normalise_angle(model_yaw - eye_yaw)
 end
 
-function on_ground(player)
+local function on_ground(player)
 	local flags = entity_get_prop(player, "m_fFlags")
 	
 	if bit_band(flags, 1) == 1 then
@@ -312,7 +312,7 @@ function on_ground(player)
 	return false
 end
 
-function in_air(player)
+local function in_air(player)
 	local flags = entity_get_prop(player, "m_fFlags")
 	
 	if bit_band(flags, 1) == 0 then
@@ -322,7 +322,7 @@ function in_air(player)
 	return false
 end
 
-function is_crouching(player)
+local function is_crouching(player)
 	local flags = entity_get_prop(player, "m_fFlags")
 	
 	if bit_band(flags, 4) == 4 then
@@ -350,7 +350,7 @@ for idx, weapon in pairs(weapons_data) do
 	weapons_index[console_name] = weapons[idx]
 end
 
-function get_weapon(idx)
+local function get_weapon(idx)
 	if type(idx) == "string" then
 		return weapons_index[idx]
 	elseif type(idx) == "number" then
