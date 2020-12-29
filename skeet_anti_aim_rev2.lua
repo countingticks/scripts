@@ -100,13 +100,14 @@ local off_jitter_degree = {
 
 local enable_aa = ui.new_checkbox("lua", "b", "Anti aim")
 local auto_direction = ui.new_checkbox("lua", "b", "Auto direction")
-local auto_dir_mode = ui.new_combobox("lua", "b", "Mode", "Adaptive", "Safe head", "Peek out")
-local auto_dir_improve = ui.new_multiselect("lua", "b", "Improvements", "Anti resolve", "Anti peek")
+local auto_dir_mode = ui.new_combobox("lua", "b", "Auto direction mode", "Adaptive", "Safe head", "Peek out")
+local auto_dir_improve = ui.new_multiselect("lua", "b", "Auto direction +", "Anti resolve", "Anti peek")
+local auto_dir_type = ui.new_combobox("lua", "b", "Desync mode", "Normal", "Adaptive", "Low delta")
 local misc_ev4sion = ui.new_checkbox("lua", "b", "Adaptive anti-aim")
+local onshot_bodyyaw = ui.new_checkbox("lua", "b", "Onshot desync")
 local off_jitter = ui.new_slider("lua", "b", "Offset jitter", 0, 120, 10, true, "°", 1, off_jitter_degree)
 local aa_indicators = ui.new_multiselect("lua", "b", "Indicators", "Arrows", "Text", "Damage")
 local fake_lag = ui.new_checkbox("lua", "b", "Peek fakelag")
-local onshot_bodyyaw = ui.new_checkbox("lua", "b", "Onshot desync")
 local legit_aa_on_e = ui.new_checkbox("lua", "b", "E desync")
 local edge_yaw_detection = ui.new_checkbox("lua", "b", "Edge yaw detection")
 local leg_movement = ui.new_checkbox("lua", "b", "Leg movement")
@@ -679,7 +680,7 @@ local function handle_indicators(type,mode)
 			elseif anti_PEEK then
 				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "ANTI PEEK")
 			else
-				client.draw_text(c, center_x, center_y + 28, 255, 255, 255, 255, "c", 0, "DEFAULT")
+				client.draw_text(c, center_x, center_y + 28, 255, 255, 255, 255, "c", 0, "NEUTRAL")
 			end
 		end
 		if contains(ui_get(aa_indicators),"Arrows") then
@@ -698,13 +699,18 @@ local function handle_indicators(type,mode)
 			elseif anti_PEEK then
 				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "ANTI PEEK")
 			else
-				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "DYNAMIC")
+				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "ADAPTIVE")
 			end
 		end
 		if contains(ui_get(aa_indicators),"Arrows") then
 			if mode == 1 then 
-				client.draw_text(c, center_x - 45, center_y, r,g,b,255, "cb+", 0, "⯇")
-				client.draw_text(c, center_x + 45, center_y, 163,160,163,255, "cb+", 0, "⯈")
+				if anti_PEEK then 
+					client.draw_text(c, center_x - 45, center_y, r,g,b,255, "cb+", 0, "<")
+					client.draw_text(c, center_x + 45, center_y, 163,160,163,255, "cb+", 0, ">")
+				else
+					client.draw_text(c, center_x - 45, center_y, r,g,b,255, "cb+", 0, "⯇")
+					client.draw_text(c, center_x + 45, center_y, 163,160,163,255, "cb+", 0, "⯈")
+				end
 			elseif mode == 2 then
 				client.draw_text(c, center_x - 45, center_y, r,g,b,255, "cb+", 0, "<")
 				client.draw_text(c, center_x + 45, center_y, 163,160,163,255, "cb+", 0, ">")
@@ -717,15 +723,20 @@ local function handle_indicators(type,mode)
 			elseif anti_PEEK then
 				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "ANTI PEEK")
 			else
-				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "DYNAMIC")
+				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "ADAPTIVE")
 			end
 		end
 		if contains(ui_get(aa_indicators),"Arrows") then
 			if mode == 1 then 
-				client.draw_text(c, center_x - 45, center_y, 163,160,163,255, "cb+", 0, "⯇")
-				client.draw_text(c, center_x + 45, center_y, r,g,b,255, "cb+", 0, "⯈")
+				if anti_PEEK then 
+					client.draw_text(c, center_x - 45, center_y, 163,160,163,255, "cb+", 0, "<")
+					client.draw_text(c, center_x + 45, center_y, r,g,b,255, "cb+", 0, ">")
+				else
+					client.draw_text(c, center_x - 45, center_y, 163,160,163,255, "cb+", 0, "⯇")
+					client.draw_text(c, center_x + 45, center_y, r,g,b,255, "cb+", 0, "⯈")
+				end
 			elseif mode == 2 then
-				client.draw_text(c, center_x - 60, center_y, 163,160,163,255, "cb+", 0, "<")
+				client.draw_text(c, center_x - 45, center_y, 163,160,163,255, "cb+", 0, "<")
 				client.draw_text(c, center_x + 45, center_y, r,g,b,255, "cb+", 0, ">")
 			end
 		end
@@ -817,7 +828,19 @@ local function handle_aa(type,offset)
 		elseif ui_get(fake_walk) and lp_vel > 5 then 
 			max_limit = 23
 		else 
-			max_limit = 60
+			if ui_get(auto_dir_type) == "Low delta" then
+				max_limit = 27
+			elseif ui_get(auto_dir_type) == "Adaptive" then
+				if lp_vel < 5 then
+					max_limit = 15
+				elseif lp_vel > 130 then
+					max_limit = 27
+				else 
+					max_limit = 60
+				end
+			else
+				max_limit = 60
+			end
 		end
 
 		if type == 2 and not crouching_t and not jumping_lp then
@@ -1257,34 +1280,36 @@ end)
 local function handle_menu()
 	local state_aa = ui_get(enable_aa)
 	local state_dir = ui_get(auto_direction)
-	ui_set_visible(auto_direction , state_aa)
-	ui_set_visible(auto_dir_mode , state_aa and state_dir)
+	ui_set_visible(auto_direction, state_aa)
+	ui_set_visible(auto_dir_mode, state_aa and state_dir)
 	ui_set_visible(auto_dir_improve, state_aa and state_dir)
-	ui_set_visible(off_jitter, state_aa and state_dir)
+	ui_set_visible(auto_dir_type, state_aa and state_dir)
 	ui_set_visible(misc_ev4sion, state_aa and state_dir)
-	ui_set_visible(onshot_bodyyaw, state_aa)
-	ui_set_visible(furia_twist, state_aa)
+	ui_set_visible(onshot_bodyyaw, state_aa and state_dir)
+	ui_set_visible(off_jitter, state_aa and state_dir)
+	ui_set_visible(aa_indicators, state_aa and state_dir)
+	ui_set_visible(fake_lag, state_aa)
 	ui_set_visible(legit_aa_on_e, state_aa)
 	ui_set_visible(edge_yaw_detection, state_aa)
-	ui_set_visible(fake_lag, state_aa)
 	ui_set_visible(leg_movement, state_aa)
+	ui_set_visible(furia_twist, state_aa)
 	ui_set_visible(more_traces, state_aa)
-	ui_set_visible(aa_indicators, state_aa and state_dir)
 end 
 
 ui_set_visible(auto_direction, false)
 ui_set_visible(auto_dir_mode, false)
 ui_set_visible(auto_dir_improve, false)
-ui_set_visible(off_jitter, false)
+ui_set_visible(auto_dir_type, false)
+ui_set_visible(misc_ev4sion, false)
 ui_set_visible(onshot_bodyyaw, false)
-ui_set_visible(furia_twist, false)
+ui_set_visible(off_jitter, false)
+ui_set_visible(aa_indicators, false)
+ui_set_visible(fake_lag, false)
 ui_set_visible(legit_aa_on_e, false)
 ui_set_visible(edge_yaw_detection, false)
-ui_set_visible(misc_ev4sion, false)
-ui_set_visible(fake_lag, false)
 ui_set_visible(leg_movement, false)
+ui_set_visible(furia_twist, false)
 ui_set_visible(more_traces, false)
-ui_set_visible(aa_indicators, false)
 
 ui_set_callback(enable_aa, handle_menu)
 ui_set_callback(auto_direction, handle_menu)
