@@ -46,7 +46,7 @@ local entity_get_player_name = entity.get_player_name
 local entity_get_player_weapon = entity.get_player_weapon
 local entity_get_bounding_box = entity.get_bounding_box
 local entity_get_player_resource = entity.get_player_resource
-entity_get_classname = entity.get_classname
+local entity_get_classname = entity.get_classname
 
 local globals_tickinterval = globals.tickinterval
 local globals_tickcount = globals.tickcount
@@ -92,6 +92,7 @@ local fl_amount = ui_reference("AA", "Fake lag", "Amount")
 local fl_variance = ui_reference("AA", "Fake lag", "Variance")
 local fl_limit = ui_reference("AA", "Fake lag", "Limit")
 local rage_silent= ui_reference("RAGE", "Aimbot", "Silent aim")
+local rage_mindamage = ui.reference("RAGE", "Aimbot", "Minimum damage")
 
 local off_jitter_degree = {
     [0] = "Off"
@@ -99,11 +100,12 @@ local off_jitter_degree = {
 
 local enable_aa = ui.new_checkbox("lua", "b", "Anti aim")
 local auto_direction = ui.new_checkbox("lua", "b", "Auto direction")
-local auto_dir_mode = ui.new_combobox("lua", "b", "Auto direction mode", "Dracos", "Safe head", "Peek out")
+local auto_dir_mode = ui.new_combobox("lua", "b", "Auto direction mode", "Adaptive", "Safe head", "Peek out")
 local anti_resolve = ui.new_checkbox("lua", "b", "Anti resolve")
+local misc_ev4sion = ui.new_checkbox("lua", "b", "Adaptive anti-aim")
 local off_jitter = ui.new_slider("lua", "b", "Offset jitter", 0, 120, 10, true, "°", 1, off_jitter_degree)
-local misc_ev4sion = ui.new_checkbox("lua", "b", "Dracos anti-aim")
-local fake_lag = ui.new_checkbox("lua", "b", "Dracos fakelag")
+local aa_indicators = ui.new_multiselect("lua", "b", "Indicators", "Arrows", "Text", "Damage")
+local fake_lag = ui.new_checkbox("lua", "b", "Peek fakelag")
 local onshot_bodyyaw = ui.new_checkbox("lua", "b", "Onshot desync")
 local legit_aa_on_e = ui.new_checkbox("lua", "b", "E desync")
 local edge_yaw_detection = ui.new_checkbox("lua", "b", "Edge yaw detection")
@@ -119,6 +121,7 @@ local available_resolver_information = {}
 local enemy_shot_angle = {}
 local enemy_shot_time = {}
 local anti_brute_FORCE = false
+--local anti_PEEK = false
 
 local isFreestanding = false
 
@@ -643,28 +646,87 @@ local function handle_directions()
     end
 end
 
-local function handle_indicators(type)
-	local center_x,center_y = client.screen_size()
- 	center_x = center_x / 2
-	center_y = center_y / 2
+local function handle_indicators(type,mode)
+	local scrsize_x, scrsize_y = client_screensize()
+	local center_x, center_y = scrsize_x / 2, scrsize_y / 2
 
 	local r,g,b
-	anti_brute_FORCE = ui_get(anti_resolve) and available_resolver_information[enemyclosesttocrosshair] and enemy_shot_angle[enemyclosesttocrosshair] ~= nil and (enemy_shot_time[enemyclosesttocrosshair] ~= nil and enemy_shot_time[enemyclosesttocrosshair] > globals_curtime())
     if anti_brute_FORCE then
 		r,g,b = 0,100,0
+	--elseif anti_PEEK then
+	--	r,g,b = 100,0,0
     else 
         r,g,b = 89,119,239
 	end
 
+	local r2,g2,b2 
+	if anti_brute_FORCE then
+		r2,g2,b2 = 0,100,0
+	else
+		r2,g2,b2 = 255,255,255
+	end
+
+	if contains(ui_get(aa_indicators),"Damage") then
+		client.draw_text(c, center_x, center_y + 40, 255, 255, 255, 255, "c", 0, ui_get(rage_mindamage))
+	end
+
 	if type == 1 then 
-		client.draw_text(c, center_x - 60, center_y, 163,160,163,255, "cb+", 0, "⯇")
-		client.draw_text(c, center_x + 60, center_y, 163,160,163,255, "cb+", 0, "⯈")
+		if contains(ui_get(aa_indicators),"Text") then
+			if anti_brute_FORCE then 
+				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "DODGE")
+			elseif holdingE then 
+				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "LEGIT AA")
+			else
+				client.draw_text(c, center_x, center_y + 28, 255, 255, 255, 255, "c", 0, "DEFAULT")
+			end
+		end
+		if contains(ui_get(aa_indicators),"Arrows") then
+			if mode == 1 then 
+				client.draw_text(c, center_x - 45, center_y, 163,160,163,255, "cb+", 0, "⯇")
+				client.draw_text(c, center_x + 45, center_y, 163,160,163,255, "cb+", 0, "⯈")
+			elseif mode == 2 then
+				client.draw_text(c, center_x - 45, center_y, 163,160,163,255, "cb+", 0, "<")
+				client.draw_text(c, center_x + 45, center_y, 163,160,163,255, "cb+", 0, ">")
+			end
+		end
 	elseif type == 2 then 
-		client.draw_text(c, center_x - 60, center_y, r,g,b,255, "cb+", 0, "⯇")
-		client.draw_text(c, center_x + 60, center_y, 163,160,163,255, "cb+", 0, "⯈")
+		if contains(ui_get(aa_indicators),"Text") then
+			if anti_brute_FORCE then 
+				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "DODGE")
+			elseif holdingE then 
+				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "LEGIT AA")
+			else
+				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "DYNAMIC")
+			end
+		end
+		if contains(ui_get(aa_indicators),"Arrows") then
+			if mode == 1 then 
+				client.draw_text(c, center_x - 45, center_y, r,g,b,255, "cb+", 0, "⯇")
+				client.draw_text(c, center_x + 45, center_y, 163,160,163,255, "cb+", 0, "⯈")
+			elseif mode == 2 then
+				client.draw_text(c, center_x - 45, center_y, r,g,b,255, "cb+", 0, "<")
+				client.draw_text(c, center_x + 45, center_y, 163,160,163,255, "cb+", 0, ">")
+			end
+		end
 	elseif type == 3 then 
-		client.draw_text(c, center_x - 60, center_y, 163,160,163,255, "cb+", 0, "⯇")
-		client.draw_text(c, center_x + 60, center_y, r,g,b,255, "cb+", 0, "⯈")
+		if contains(ui_get(aa_indicators),"Text") then
+			if anti_brute_FORCE then 
+				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "DODGE")
+			elseif holdingE then 
+				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "LEGIT AA")
+			else
+				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "DYNAMIC")
+			end
+		end
+		if contains(ui_get(aa_indicators),"Arrows") then
+			if mode == 1 then 
+				client.draw_text(c, center_x - 45, center_y, 163,160,163,255, "cb+", 0, "⯇")
+				client.draw_text(c, center_x + 45, center_y, r,g,b,255, "cb+", 0, "⯈")
+			elseif mode == 2 then
+				client.draw_text(c, center_x - 60, center_y, 163,160,163,255, "cb+", 0, "<")
+				client.draw_text(c, center_x + 45, center_y, r,g,b,255, "cb+", 0, ">")
+			end
+		end
 	end
 end
 
@@ -701,12 +763,6 @@ local function handle_aa(type,offset)
 			end
 		end
 	end
-	
-	if ui_get(misc_dt_key) then
-		ui_set(rage_silent, not first_shot_only)
-	else
-		ui_set(rage_silent, true)
-	end
 
     local desync_onshot = 
                         (
@@ -715,7 +771,7 @@ local function handle_aa(type,offset)
                             not crouching_t and not ui_get(misc_fakeduck_key) and not ui_get(misc_onshot_key)
                         and 
                             (is_record_valid(aimbot_fired_time,first_shot_only and 1 or 0.008))
-                        )	                       
+						)	                       
     ui_set(aa_yaw, "180")
     ui_set(aa_lby, "Eye yaw")
 
@@ -736,13 +792,14 @@ local function handle_aa(type,offset)
         ui_set(aa_body_yaw_slider, lp_vel > 95 and 109 or 180)
     else
         if not isFreestanding then 
-            ui_set(aa_yaw_offset, mode == 2 and 0 or mode == 3 and 0)
+            ui_set(aa_yaw_offset, type == 2 and 0 or type == 3 and 0)
             ui_set(aa_body_yaw, "static")
             ui_set(aa_body_yaw_slider, -180)
         else
-            ui_set(aa_yaw_offset, (crouching_t and 13) or (mode == 3 and crouching_ct and 17) or 0)
+            ui_set(aa_yaw_offset, (crouching_t and 13) or (type == 3 and crouching_ct and 17) or 0)
             ui_set(aa_body_yaw, "static")
-            if anti_brute_FORCE then offset = -enemy_shot_angle[enemyclosesttocrosshair] end
+			if anti_brute_FORCE then offset = -enemy_shot_angle[enemyclosesttocrosshair] end
+			--if anti_PEEK then offset = -ui_get(aa_body_yaw_slider) end
 			ui_set(aa_body_yaw_slider, 
 									(desync_onshot and should_flip and offset) 
 									or
@@ -818,8 +875,9 @@ local function on_paint(c)
 
     local no_angle = not (realtime_freestand ~= 0 and realtime_freestand ~= nil or realtime_freestand_v2 ~= 0 and realtime_freestand_v2)
 	local direct_mode = ui_get(auto_dir_mode)
-	
+
 	anti_brute_FORCE = ui_get(anti_resolve) and available_resolver_information[enemyclosesttocrosshair] and enemy_shot_angle[enemyclosesttocrosshair] ~= nil and (enemy_shot_time[enemyclosesttocrosshair] ~= nil and enemy_shot_time[enemyclosesttocrosshair] > globals_curtime())
+	--anti_PEEK = (realtime_freestand == 90 or realtime_freestand_v2 == 90 or realtime_freestand == -90 or realtime_freestand_v2 == -90) and not enemy_is_peeking_and_can_hit_us(enemyclosesttocrosshair) and not #players == 0 and not anti_brute_FORCE and not jumping_lp and get_velocity(entity_get_local_player()) < 80
 
 	if #players == 0 and ui_get(off_jitter) > 0 and isFreestanding then
 		ui_set(aa_yaw_jitter, "offset")
@@ -835,62 +893,62 @@ local function on_paint(c)
     if isFreestanding then
 		if (no_angle and dangerous_x_offset and dangerous_y_offset and not flip_angle and not jumping_lp and get_velocity(entity_get_local_player()) < 130) then
             handle_aa(1,0)
-			handle_indicators(1)
+			handle_indicators(1,2)
 		elseif (no_angle and dangerous_x_offset and dangerous_y_offset and not flip_angle and not jumping_lp and get_velocity(entity_get_local_player()) > 130) then
 			jitterSpumant()
-			handle_indicators(1)
-		elseif direct_mode == "Dracos" then
+			handle_indicators(1,2)
+		elseif direct_mode == "Adaptive" then
 			if adaptive_freestand < 0 then
 				if enemy_is_peeking_and_can_hit_us(enemyclosesttocrosshair) and (adjusted_freestand[enemyclosesttocrosshair] < globals_curtime()) then
 					adjusted_freestand[enemyclosesttocrosshair] = globals_curtime() + 5
                     handle_aa(3,flipJitter and -2 or 0)
-					handle_indicators(1)
+					handle_indicators(1,1)
 				else
 					if (adjusted_freestand[enemyclosesttocrosshair] ~= nil and adjusted_freestand[enemyclosesttocrosshair] > globals_curtime()) then
                         handle_aa(3,-180)
-						handle_indicators(3)
+						handle_indicators(3,1)
 					else
                         handle_aa(2,180)
-						handle_indicators(2)
+						handle_indicators(2,1)
 					end
 				end	
 			elseif adaptive_freestand > 0 then
 				if enemy_is_peeking_and_can_hit_us(enemyclosesttocrosshair) and (adjusted_freestand[enemyclosesttocrosshair] < globals_curtime()) then
 					adjusted_freestand[enemyclosesttocrosshair] = globals_curtime() + 5
                     handle_aa(2,flipJitter and 0 or 2)
-					handle_indicators(1)
+					handle_indicators(1,1)
 				else
 					if (adjusted_freestand[enemyclosesttocrosshair] ~= nil and adjusted_freestand[enemyclosesttocrosshair] > globals_curtime()) then
                         handle_aa(2,180)
-						handle_indicators(2)
+						handle_indicators(2,1)
 					else
                         handle_aa(3,-180)
-						handle_indicators(3)
+						handle_indicators(3,1)
 					end
 				end
 			else
                 handle_aa(1,0)
-				handle_indicators(1)
+				handle_indicators(1,2)
 			end
 		elseif realtime_freestand == -90 or realtime_freestand_v2 == -90 then
 			if direct_mode == "Safe head" then
                 handle_aa(2,180)
-				handle_indicators(2)
+				handle_indicators(2,1)
 			elseif direct_mode == "Peek out" then
                 handle_aa(3,-180)
-				handle_indicators(3)
+				handle_indicators(3,1)
 			end
 		elseif realtime_freestand == 90 or realtime_freestand_v2 == 90 then
 			if direct_mode == "Safe head" then
                 handle_aa(3,-180)
-				handle_indicators(3)
+				handle_indicators(3,1)
 			elseif direct_mode == "Peek out" then
                 handle_aa(2,180)
-				handle_indicators(2)
+				handle_indicators(2,1)
 			end
 		else
             jitterSpumant()
-			handle_indicators(1)
+			handle_indicators(1,2)
 		end	
     end
 end
@@ -1183,14 +1241,15 @@ local function handle_menu()
 	ui_set_visible(auto_dir_mode , state_aa and state_dir)
 	ui_set_visible(anti_resolve, state_aa and state_dir)
 	ui_set_visible(off_jitter, state_aa and state_dir)
+	ui_set_visible(misc_ev4sion, state_aa and state_dir)
 	ui_set_visible(onshot_bodyyaw, state_aa)
 	ui_set_visible(furia_twist, state_aa)
 	ui_set_visible(legit_aa_on_e, state_aa)
 	ui_set_visible(edge_yaw_detection, state_aa)
-	ui_set_visible(misc_ev4sion, state_aa)
 	ui_set_visible(fake_lag, state_aa)
 	ui_set_visible(leg_movement, state_aa)
 	ui_set_visible(more_traces, state_aa)
+	ui_set_visible(aa_indicators, state_aa and state_dir)
 end 
 
 ui_set_visible(auto_direction, false)
@@ -1205,6 +1264,7 @@ ui_set_visible(misc_ev4sion, false)
 ui_set_visible(fake_lag, false)
 ui_set_visible(leg_movement, false)
 ui_set_visible(more_traces, false)
+ui_set_visible(aa_indicators, false)
 
 ui_set_callback(enable_aa, handle_menu)
 ui_set_callback(auto_direction, handle_menu)
