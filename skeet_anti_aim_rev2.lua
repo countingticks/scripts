@@ -105,7 +105,7 @@ local auto_dir_improve = ui.new_multiselect("lua", "b", "Auto direction +", "Ant
 local auto_dir_type = ui.new_combobox("lua", "b", "Desync mode", "Normal", "Adaptive", "Low delta")
 local misc_ev4sion = ui.new_checkbox("lua", "b", "Adaptive anti-aim")
 local onshot_bodyyaw = ui.new_checkbox("lua", "b", "Onshot desync")
-local off_jitter = ui.new_slider("lua", "b", "Offset jitter", 0, 120, 10, true, "°", 1, off_jitter_degree)
+local off_jitter = ui.new_slider("lua", "b", "Offset jitter", 0, 120, 20, true, "°", 1, off_jitter_degree)
 local aa_indicators = ui.new_multiselect("lua", "b", "Indicators", "Arrows", "Text", "Damage")
 local fake_lag = ui.new_checkbox("lua", "b", "Peek fakelag")
 local legit_aa_on_e = ui.new_checkbox("lua", "b", "E desync")
@@ -669,19 +669,18 @@ local function handle_indicators(type,mode)
 		r2,g2,b2 = 255,255,255
 	end
 
-	if contains(ui_get(aa_indicators),"Damage") then
-		client.draw_text(c, center_x, center_y + 40, 255, 255, 255, 255, "c", 0, ui_get(rage_mindamage))
-	end
+	local y_add = 28
 
 	if type == 1 then 
 		if contains(ui_get(aa_indicators),"Text") then
 			if anti_brute_FORCE then 
-				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "ANTI RESOLVE")
+				client.draw_text(c, center_x, center_y + y_add, r2,g2,b2,255, "c", 0, "ANTI RESOLVE")
 			elseif anti_PEEK then
-				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "ANTI PEEK")
+				client.draw_text(c, center_x, center_y + y_add, r2,g2,b2,255, "c", 0, "ANTI PEEK")
 			else
-				client.draw_text(c, center_x, center_y + 28, 255, 255, 255, 255, "c", 0, "NEUTRAL")
+				client.draw_text(c, center_x, center_y + y_add, 255, 255, 255, 255, "c", 0, "NEUTRAL")
 			end
+			y_add = y_add + 12
 		end
 		if contains(ui_get(aa_indicators),"Arrows") then
 			if mode == 1 then 
@@ -695,12 +694,13 @@ local function handle_indicators(type,mode)
 	elseif type == 2 then 
 		if contains(ui_get(aa_indicators),"Text") then
 			if anti_brute_FORCE then 
-				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "ANTI RESOLVE")
+				client.draw_text(c, center_x, center_y + y_add, r2,g2,b2,255, "c", 0, "ANTI RESOLVE")
 			elseif anti_PEEK then
-				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "ANTI PEEK")
+				client.draw_text(c, center_x, center_y + y_add, r2,g2,b2,255, "c", 0, "ANTI PEEK")
 			else
-				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "ADAPTIVE")
+				client.draw_text(c, center_x, center_y + y_add, r2,g2,b2,255, "c", 0, "ADAPTIVE")
 			end
+			y_add = y_add + 12
 		end
 		if contains(ui_get(aa_indicators),"Arrows") then
 			if mode == 1 then 
@@ -719,12 +719,13 @@ local function handle_indicators(type,mode)
 	elseif type == 3 then 
 		if contains(ui_get(aa_indicators),"Text") then
 			if anti_brute_FORCE then 
-				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "ANTI RESOLVE")
+				client.draw_text(c, center_x, center_y + y_add, r2,g2,b2,255, "c", 0, "ANTI RESOLVE")
 			elseif anti_PEEK then
-				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "ANTI PEEK")
+				client.draw_text(c, center_x, center_y + y_add, r2,g2,b2,255, "c", 0, "ANTI PEEK")
 			else
-				client.draw_text(c, center_x, center_y + 28, r2,g2,b2,255, "c", 0, "ADAPTIVE")
+				client.draw_text(c, center_x, center_y + y_add, r2,g2,b2,255, "c", 0, "ADAPTIVE")
 			end
+			y_add = y_add + 12
 		end
 		if contains(ui_get(aa_indicators),"Arrows") then
 			if mode == 1 then 
@@ -740,6 +741,10 @@ local function handle_indicators(type,mode)
 				client.draw_text(c, center_x + 45, center_y, r,g,b,255, "cb+", 0, ">")
 			end
 		end
+	end
+
+	if contains(ui_get(aa_indicators),"Damage") then
+		client.draw_text(c, center_x, center_y + y_add, 255, 255, 255, 255, "c", 0, ui_get(rage_mindamage))
 	end
 end
 
@@ -916,12 +921,12 @@ local function on_paint(c)
 	anti_brute_FORCE = contains(ui_get(auto_dir_improve),"Anti resolve") and available_resolver_information[enemyclosesttocrosshair] and enemy_shot_angle[enemyclosesttocrosshair] ~= nil and (enemy_shot_time[enemyclosesttocrosshair] ~= nil and enemy_shot_time[enemyclosesttocrosshair] > globals_curtime())
 	anti_PEEK = contains(ui_get(auto_dir_improve),"Anti peek") and not entity_is_dormant(enemyclosesttocrosshair)
 			and 
-				(realtime_freestand == 90 or realtime_freestand_v2 == 90 or realtime_freestand == -90 or realtime_freestand_v2 == -90) 
+				(realtime_freestand ~= 0 or realtime_freestand_v2 ~= 0) and not anti_brute_FORCE
 			and 
-				not enemy_is_peeking_and_can_hit_us(enemyclosesttocrosshair) and not anti_brute_FORCE and not jumping_lp 
+				not enemy_is_peeking_and_can_hit_us(enemyclosesttocrosshair) and not jumping_lp 
 			and 
 				(get_velocity(entity_get_local_player()) < 5 or ui_get(fake_walk)) and not ui_get(misc_fakeduck_key)
-
+				
 	if #players == 0 and ui_get(off_jitter) > 0 and isFreestanding then
 		ui_set(aa_yaw_jitter, "offset")
 		ui_set(aa_yaw_jitter_offset, -ui_get(off_jitter))
