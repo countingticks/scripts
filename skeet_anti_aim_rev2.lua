@@ -92,27 +92,27 @@ local fl_amount = ui_reference("AA", "Fake lag", "Amount")
 local fl_variance = ui_reference("AA", "Fake lag", "Variance")
 local fl_limit = ui_reference("AA", "Fake lag", "Limit")
 local rage_silent= ui_reference("RAGE", "Aimbot", "Silent aim")
-local rage_mindamage = ui.reference("RAGE", "Aimbot", "Minimum damage")
+local rage_mindamage = ui_reference("RAGE", "Aimbot", "Minimum damage")
 
 local off_jitter_degree = {
     [0] = "Off"
 }
 
 local enable_aa = ui.new_checkbox("lua", "b", "Anti aim")
-local auto_direction = ui.new_checkbox("lua", "b", "Auto direction")
-local auto_dir_mode = ui.new_combobox("lua", "b", "Auto direction mode", "Adaptive", "Safe head", "Peek out")
-local auto_dir_improve = ui.new_multiselect("lua", "b", "Auto direction +", "Anti resolve", "Anti peek")
-local auto_dir_type = ui.new_combobox("lua", "b", "Desync mode", "Normal", "Adaptive", "Low delta")
-local misc_ev4sion = ui.new_checkbox("lua", "b", "Adaptive anti-aim")
-local onshot_bodyyaw = ui.new_checkbox("lua", "b", "Onshot desync")
-local off_jitter = ui.new_slider("lua", "b", "Offset jitter", 0, 120, 20, true, "°", 1, off_jitter_degree)
-local aa_indicators = ui.new_multiselect("lua", "b", "Indicators", "Arrows", "Text", "Damage")
-local fake_lag = ui.new_checkbox("lua", "b", "Peek fakelag")
-local legit_aa_on_e = ui.new_checkbox("lua", "b", "E desync")
-local edge_yaw_detection = ui.new_checkbox("lua", "b", "Edge yaw detection")
-local leg_movement = ui.new_checkbox("lua", "b", "Leg movement")
-local furia_twist = ui.new_checkbox("lua", "b", "Twist")
-local more_traces = ui.new_checkbox("lua", "b", "More traces")
+local aa_auto_dir = ui.new_checkbox("lua", "b", "Auto direction")
+local aa_auto_dir_mode = ui.new_combobox("lua", "b", "Auto direction mode", "Adaptive", "Safe head", "Peek out")
+local aa_auto_dir_impr = ui.new_multiselect("lua", "b", "Auto direction +", "Anti resolve", "Anti peek")
+local aa_auto_dir_type = ui.new_combobox("lua", "b", "Desync mode", "Normal", "Adaptive", "Low delta")
+local aa_ev4sion = ui.new_checkbox("lua", "b", "Adaptive anti-aim")
+local aa_onshot = ui.new_checkbox("lua", "b", "Onshot desync")
+local aa_off_jitter = ui.new_slider("lua", "b", "Offset jitter", 0, 120, 20, true, "°", 1, off_jitter_degree)
+local misc_ind = ui.new_multiselect("lua", "b", "Indicators", "Arrows", "Text", "Damage")
+local misc_fakelag = ui.new_checkbox("lua", "b", "Peek fakelag")
+local misc_legit_aa = ui.new_checkbox("lua", "b", "E desync")
+local misc_edge_yaw = ui.new_checkbox("lua", "b", "Edge yaw detection")
+local misc_leg = ui.new_checkbox("lua", "b", "Leg movement")
+local misc_twist = ui.new_checkbox("lua", "b", "Twist")
+local misc_trace = ui.new_checkbox("lua", "b", "Double traces")
 
 local enemyclosesttocrosshair = nil
 local flipJitter = false
@@ -368,8 +368,8 @@ client_set_event_callback("aim_fire", function (c)
 end)
 
 client_set_event_callback("bullet_impact", function(c)
-    if not ui_get(enable_aa) and not ui_get(auto_direction) then return end
-	if contains(ui_get(auto_dir_improve),"Anti resolve") and entity_is_alive(entity_get_local_player()) then
+    if not ui_get(enable_aa) and not ui_get(aa_auto_dir) then return end
+	if contains(ui_get(aa_auto_dir_impr),"Anti resolve") and entity_is_alive(entity_get_local_player()) then
         local ent = client_userid_to_entindex(c.userid)
         if not entity.is_dormant(ent) and entity.is_enemy(ent) and ent == enemyclosesttocrosshair then
             local ent_shoot = { entity_get_prop(ent, "m_vecOrigin") }
@@ -434,7 +434,7 @@ local function DoFreestanding(enemy, ...)
 end
 
 local function DoEarlyFreestanding(enemy, ...)
-	if not ui_get(more_traces) then return end
+	if not ui_get(misc_trace) then return end
 
 	local lx, ly, lz = entity_get_prop(enemy, "m_vecOrigin") 
 	local viewangle_x, viewangle_y, roll = client_camera_angles()
@@ -640,7 +640,7 @@ local function setSpeed(newSpeed)
 end
 
 local function handle_directions()
-    if ui_get(auto_direction) then
+    if ui_get(aa_auto_dir) then
         isFreestanding = true
     else
         isFreestanding = false
@@ -672,7 +672,7 @@ local function handle_indicators(type,mode)
 	local y_add = 28
 
 	if type == 1 then 
-		if contains(ui_get(aa_indicators),"Text") then
+		if contains(ui_get(misc_ind),"Text") then
 			if anti_brute_FORCE then 
 				client.draw_text(c, center_x, center_y + y_add, r2,g2,b2,255, "c", 0, "ANTI RESOLVE")
 			elseif anti_PEEK then
@@ -682,7 +682,7 @@ local function handle_indicators(type,mode)
 			end
 			y_add = y_add + 12
 		end
-		if contains(ui_get(aa_indicators),"Arrows") then
+		if contains(ui_get(misc_ind),"Arrows") then
 			if mode == 1 then 
 				client.draw_text(c, center_x - 45, center_y, 163,160,163,255, "cb+", 0, "⯇")
 				client.draw_text(c, center_x + 45, center_y, 163,160,163,255, "cb+", 0, "⯈")
@@ -692,7 +692,7 @@ local function handle_indicators(type,mode)
 			end
 		end
 	elseif type == 2 then 
-		if contains(ui_get(aa_indicators),"Text") then
+		if contains(ui_get(misc_ind),"Text") then
 			if anti_brute_FORCE then 
 				client.draw_text(c, center_x, center_y + y_add, r2,g2,b2,255, "c", 0, "ANTI RESOLVE")
 			elseif anti_PEEK then
@@ -702,7 +702,7 @@ local function handle_indicators(type,mode)
 			end
 			y_add = y_add + 12
 		end
-		if contains(ui_get(aa_indicators),"Arrows") then
+		if contains(ui_get(misc_ind),"Arrows") then
 			if mode == 1 then 
 				if anti_PEEK then 
 					client.draw_text(c, center_x - 45, center_y, r,g,b,255, "cb+", 0, "<")
@@ -717,7 +717,7 @@ local function handle_indicators(type,mode)
 			end
 		end
 	elseif type == 3 then 
-		if contains(ui_get(aa_indicators),"Text") then
+		if contains(ui_get(misc_ind),"Text") then
 			if anti_brute_FORCE then 
 				client.draw_text(c, center_x, center_y + y_add, r2,g2,b2,255, "c", 0, "ANTI RESOLVE")
 			elseif anti_PEEK then
@@ -727,7 +727,7 @@ local function handle_indicators(type,mode)
 			end
 			y_add = y_add + 12
 		end
-		if contains(ui_get(aa_indicators),"Arrows") then
+		if contains(ui_get(misc_ind),"Arrows") then
 			if mode == 1 then 
 				if anti_PEEK then 
 					client.draw_text(c, center_x - 45, center_y, 163,160,163,255, "cb+", 0, "<")
@@ -743,7 +743,7 @@ local function handle_indicators(type,mode)
 		end
 	end
 
-	if contains(ui_get(aa_indicators),"Damage") then
+	if contains(ui_get(misc_ind),"Damage") then
 		client.draw_text(c, center_x, center_y + y_add, 255, 255, 255, 255, "c", 0, ui_get(rage_mindamage))
 	end
 end
@@ -784,7 +784,7 @@ local function handle_aa(type,offset)
 
     local desync_onshot = 
                         (
-                            ui_get(onshot_bodyyaw) and aimbot_fired_time ~= nil 
+                            ui_get(aa_onshot) and aimbot_fired_time ~= nil 
                         and 
                             not crouching_t and not ui_get(misc_fakeduck_key) and not ui_get(misc_onshot_key)
                         and 
@@ -833,9 +833,9 @@ local function handle_aa(type,offset)
 		elseif ui_get(fake_walk) and lp_vel > 5 then 
 			max_limit = 23
 		else 
-			if ui_get(auto_dir_type) == "Low delta" then
+			if ui_get(aa_auto_dir_type) == "Low delta" then
 				max_limit = 27
-			elseif ui_get(auto_dir_type) == "Adaptive" then
+			elseif ui_get(aa_auto_dir_type) == "Adaptive" then
 				if lp_vel < 5 then
 					max_limit = 15
 				elseif lp_vel > 130 then
@@ -893,7 +893,7 @@ local function on_paint(c)
 		end
 	end
 
-	if ui_get(misc_ev4sion) then
+	if ui_get(aa_ev4sion) then
 		if evasion_time <= globals_realtime() then 
 			if enemyclosesttocrosshair ~= nil and evasion_ent ~= nil and get_velocity(entity_get_local_player()) > 5  and evasion_ent ~= evasion_last_ent then
 				local player_resource = entity_get_player_resource()
@@ -916,10 +916,10 @@ local function on_paint(c)
 	end
 
     local no_angle = not (realtime_freestand ~= 0 and realtime_freestand ~= nil or realtime_freestand_v2 ~= 0 and realtime_freestand_v2)
-	local direct_mode = ui_get(auto_dir_mode)
+	local direct_mode = ui_get(aa_auto_dir_mode)
 
-	anti_brute_FORCE = contains(ui_get(auto_dir_improve),"Anti resolve") and available_resolver_information[enemyclosesttocrosshair] and enemy_shot_angle[enemyclosesttocrosshair] ~= nil and (enemy_shot_time[enemyclosesttocrosshair] ~= nil and enemy_shot_time[enemyclosesttocrosshair] > globals_curtime())
-	anti_PEEK = contains(ui_get(auto_dir_improve),"Anti peek") and not entity_is_dormant(enemyclosesttocrosshair)
+	anti_brute_FORCE = contains(ui_get(aa_auto_dir_impr),"Anti resolve") and available_resolver_information[enemyclosesttocrosshair] and enemy_shot_angle[enemyclosesttocrosshair] ~= nil and (enemy_shot_time[enemyclosesttocrosshair] ~= nil and enemy_shot_time[enemyclosesttocrosshair] > globals_curtime())
+	anti_PEEK = contains(ui_get(aa_auto_dir_impr),"Anti peek") and not entity_is_dormant(enemyclosesttocrosshair)
 			and 
 				(realtime_freestand ~= 0 or realtime_freestand_v2 ~= 0) and not anti_brute_FORCE
 			and 
@@ -927,9 +927,9 @@ local function on_paint(c)
 			and 
 				(get_velocity(entity_get_local_player()) < 5 or ui_get(fake_walk)) and not ui_get(misc_fakeduck_key)
 				
-	if #players == 0 and ui_get(off_jitter) > 0 and isFreestanding then
+	if #players == 0 and ui_get(aa_off_jitter) > 0 and isFreestanding then
 		ui_set(aa_yaw_jitter, "offset")
-		ui_set(aa_yaw_jitter_offset, -ui_get(off_jitter))
+		ui_set(aa_yaw_jitter_offset, -ui_get(aa_off_jitter))
 	else
 		ui_set(aa_yaw_jitter, "off")
 	end
@@ -1018,14 +1018,14 @@ client_set_event_callback("run_command", function ()
 	local fakeduck = ui_get(misc_fakeduck_key)
     
     -- EDGE YAW
-	if ui_get(edge_yaw_detection) and not can_enemy_hit_head(enemyclosesttocrosshair) and not jumping_lp and not ui_get(misc_fakeduck_key) and not holdingE then
+	if ui_get(misc_edge_yaw) and not can_enemy_hit_head(enemyclosesttocrosshair) and not jumping_lp and not ui_get(misc_fakeduck_key) and not holdingE then
 		ui_set(aa_edge_yaw,true)
 	else
 		ui_set(aa_edge_yaw,false)
 	end
 
     -- LEGS 
-	if ui_get(leg_movement) then
+	if ui_get(misc_leg) then
 		if hit then
 			ui_set(misc_leg_movement,"off")
 		else
@@ -1036,7 +1036,7 @@ client_set_event_callback("run_command", function ()
 	end
 
 	-- FAKE LAG 
-	if ui_get(fake_lag) then
+	if ui_get(misc_fakelag) then
 		if hit or jumping_lp then
 			ui_set(fl_amount,"Fluctuate")	
 			ui_set(fl_variance, 0)
@@ -1050,7 +1050,7 @@ client_set_event_callback("run_command", function ()
 	jitter = not jitter
 	jitter2 = not jitter2
 
-	if not ui_get(furia_twist) or jumping_lp then 
+	if not ui_get(misc_twist) or jumping_lp then 
 		setSpeed(450)
 		return 
 	end
@@ -1112,7 +1112,7 @@ client_set_event_callback("setup_command", function (e)
 	local weapz = entity_get_player_weapon(entity_get_local_player())
 	local is_bomb = weapz ~= nil and entity_get_classname(weapz) == "CC4"
 
-	if ui_get(legit_aa_on_e) and not is_bomb and client_key_state(0x45) then
+	if ui_get(misc_legit_aa) and not is_bomb and client_key_state(0x45) then
 		if e.chokedcommands == 0 then
 			e.in_use = 0
 			holdingE = true
@@ -1284,37 +1284,37 @@ end)
 
 local function handle_menu()
 	local state_aa = ui_get(enable_aa)
-	local state_dir = ui_get(auto_direction)
-	ui_set_visible(auto_direction, state_aa)
-	ui_set_visible(auto_dir_mode, state_aa and state_dir)
-	ui_set_visible(auto_dir_improve, state_aa and state_dir)
-	ui_set_visible(auto_dir_type, state_aa and state_dir)
-	ui_set_visible(misc_ev4sion, state_aa and state_dir)
-	ui_set_visible(onshot_bodyyaw, state_aa and state_dir)
-	ui_set_visible(off_jitter, state_aa and state_dir)
-	ui_set_visible(aa_indicators, state_aa and state_dir)
-	ui_set_visible(fake_lag, state_aa)
-	ui_set_visible(legit_aa_on_e, state_aa)
-	ui_set_visible(edge_yaw_detection, state_aa)
-	ui_set_visible(leg_movement, state_aa)
-	ui_set_visible(furia_twist, state_aa)
-	ui_set_visible(more_traces, state_aa)
+	local state_dir = ui_get(aa_auto_dir)
+	ui_set_visible(aa_auto_dir, state_aa)
+	ui_set_visible(aa_auto_dir_mode, state_aa and state_dir)
+	ui_set_visible(aa_auto_dir_impr, state_aa and state_dir)
+	ui_set_visible(aa_auto_dir_type, state_aa and state_dir)
+	ui_set_visible(aa_ev4sion, state_aa and state_dir)
+	ui_set_visible(aa_onshot, state_aa and state_dir)
+	ui_set_visible(aa_off_jitter, state_aa and state_dir)
+	ui_set_visible(misc_ind, state_aa and state_dir)
+	ui_set_visible(misc_fakelag, state_aa)
+	ui_set_visible(misc_legit_aa, state_aa)
+	ui_set_visible(misc_edge_yaw, state_aa)
+	ui_set_visible(misc_leg, state_aa)
+	ui_set_visible(misc_twist, state_aa)
+	ui_set_visible(misc_trace, state_aa)
 end 
 
-ui_set_visible(auto_direction, false)
-ui_set_visible(auto_dir_mode, false)
-ui_set_visible(auto_dir_improve, false)
-ui_set_visible(auto_dir_type, false)
-ui_set_visible(misc_ev4sion, false)
-ui_set_visible(onshot_bodyyaw, false)
-ui_set_visible(off_jitter, false)
-ui_set_visible(aa_indicators, false)
-ui_set_visible(fake_lag, false)
-ui_set_visible(legit_aa_on_e, false)
-ui_set_visible(edge_yaw_detection, false)
-ui_set_visible(leg_movement, false)
-ui_set_visible(furia_twist, false)
-ui_set_visible(more_traces, false)
+ui_set_visible(aa_auto_dir, false)
+ui_set_visible(aa_auto_dir_mode, false)
+ui_set_visible(aa_auto_dir_impr, false)
+ui_set_visible(aa_auto_dir_type, false)
+ui_set_visible(aa_ev4sion, false)
+ui_set_visible(aa_onshot, false)
+ui_set_visible(aa_off_jitter, false)
+ui_set_visible(misc_ind, false)
+ui_set_visible(misc_fakelag, false)
+ui_set_visible(misc_legit_aa, false)
+ui_set_visible(misc_edge_yaw, false)
+ui_set_visible(misc_leg, false)
+ui_set_visible(misc_twist, false)
+ui_set_visible(misc_trace, false)
 
 ui_set_callback(enable_aa, handle_menu)
-ui_set_callback(auto_direction, handle_menu)
+ui_set_callback(aa_auto_dir, handle_menu)
