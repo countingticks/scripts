@@ -681,7 +681,7 @@ local function on_run_command()
 			else
 				ui_set(fl_amount,"Maximum")
 				ui_set(fl_variance, 15)
-				ui_set(fl_limit, 10)
+				ui_set(fl_limit, 14)
 			end
 		else
 			ui_set(fl_limit, 14)
@@ -710,7 +710,7 @@ local function on_paint()
 	if(current_side == 1) then -- RIGHT
 		client.draw_text(c, center_x - 60, center_y, 163,160,163,255, "cb+", 0, "⯇")
 		client.draw_text(c, center_x + 60, center_y, r,g,b,alpha, "cb+", 0, "⯈")
-	else if(current_side == -1) then -- LEFT
+	elseif(current_side == -1) then -- LEFT
 		client.draw_text(c, center_x - 60, center_y, r,g,b,alpha, "cb+", 0, "⯇")
 		client.draw_text(c, center_x + 60, center_y, 163,160,163,255, "cb+", 0, "⯈")
 	else -- BACKWARDS
