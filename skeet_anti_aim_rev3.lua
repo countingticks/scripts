@@ -1019,6 +1019,9 @@ local function paint(c)
 
 	local alpha = 255
 
+	if contains(ui.get(misc_ind),"Damage") then
+		client.draw_text(c, center_x, center_y + 28, 255, 255, 255, 255, "c", 0, ui.get(rage_mindamage))
+	end
 	if contains(ui.get(misc_ind),"Arrows") then
 		if ui.get(aa_safety) then
 			if should_edge then
@@ -1045,9 +1048,6 @@ local function paint(c)
 			client.draw_text(c, center_x + 45, center_y, 163,160,163,255, "c+", 0, "⯈")
 			client.draw_text(c, center_x - 45, center_y, 163,160,163,255, "c+", 0, "⯇")
 		end	
-	end
-	if contains(ui.get(misc_ind),"Damage") then
-		client.draw_text(c, center_x, center_y + 28, 255, 255, 255, 255, "c", 0, ui.get(rage_mindamage))
 	end
 end
 
