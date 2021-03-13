@@ -1,40 +1,36 @@
-local aa_state = ui.reference("AA", "Anti-aimbot angles", "Enabled")
-local aa_yaw, aa_yaw_offset = ui.reference("AA", "Anti-aimbot angles", "Yaw")
-local aa_yaw_jitter, aa_yaw_jitter_offset = ui.reference("AA", "Anti-aimbot angles", "Yaw jitter")
-local aa_yaw_base = ui.reference("AA", "Anti-aimbot angles", "Yaw base")
-local aa_fake_yaw, aa_fake_yaw_slider = ui.reference("AA", "Anti-aimbot angles", "body yaw")
-local aa_fs_byaw = ui.reference("AA", "Anti-aimbot angles", "Freestanding body yaw")
-local aa_fs_triggers = ui.reference("AA", "Anti-aimbot angles", "Freestanding")
-local aa_body_limit = ui.reference("AA", "Anti-aimbot angles", "fake yaw limit")
-local aa_lby = ui.reference("AA", "Anti-aimbot angles", "Lower body yaw target")
-local aa_edge = ui.reference("AA", "Anti-aimbot angles", "Edge yaw")
-local misc_fakeduck = ui.reference("RAGE", "Other", "Duck peek assist")
-local misc_legs = ui.reference("AA", "other", "leg movement")
-local __,fake_walk = ui.reference("AA", "other", "slow motion")
+local aa_state = ui.reference("aa", "anti-aimbot angles", "enabled")
+local aa_yaw, aa_yaw_offset = ui.reference("aa", "anti-aimbot angles", "yaw")
+local aa_yaw_jitter, aa_yaw_jitter_offset = ui.reference("aa", "anti-aimbot angles", "yaw jitter")
+local aa_yaw_base = ui.reference("aa", "Anti-aimbot angles", "yaw base")
+local aa_fake_yaw, aa_fake_yaw_slider = ui.reference("aa", "anti-aimbot angles", "body yaw")
+local aa_fs_byaw = ui.reference("aa", "anti-aimbot angles", "freestanding body yaw")
+local aa_fs_triggers = ui.reference("aa", "anti-aimbot angles", "freestanding")
+local aa_body_limit = ui.reference("aa", "anti-aimbot angles", "fake yaw limit")
+local aa_lby = ui.reference("aa", "anti-aimbot angles", "lower body yaw target")
+local aa_edge = ui.reference("aa", "anti-aimbot angles", "edge yaw")
+local misc_fakeduck = ui.reference("rage", "other", "duck peek assist")
+local misc_legs = ui.reference("aa", "other", "leg movement")
+local __,fake_walk = ui.reference("aa", "other", "slow motion")
 local misc_doubletap,doubletap = ui.reference("rage", "other", "double tap")
-local misc_onshot, misc_onshot_aa = ui.reference("AA", "Other", "On shot anti-aim")
-local fl_amount = ui.reference("AA", "Fake lag", "Amount")
-local fl_variance = ui.reference("AA", "Fake lag", "Variance")
-local rage_mindamage = ui.reference("RAGE", "Aimbot", "Minimum damage")
+local misc_onshot, onshot = ui.reference("aa", "Other", "On shot anti-aim")
 
 local off_jitter_degree = {
     [0] = "Off"
 }
 
 local enable_aa = ui.new_checkbox("lua", "b", "Anti aim")
-local aa_safety = ui.new_checkbox("lua", "b", "Prefer safe angles")
-local aa_ev4sion = ui.new_checkbox("lua", "b", "Adaptive anti-aim")
-local aa_ev4sion_slider = ui.new_slider("lua", "b", "Chance to block physical hit", 40, 100, 50, true, "%")
-local aa_anti_resolve = ui.new_checkbox("lua", "b", "Anti resolve")
+local aa_ev4sion = ui.new_checkbox("lua", "b", "Evasion")
+local aa_ev4sion_slider = ui.new_slider("lua", "b", "Chance to block hit", 40, 100, 50, true, "%")
+local aa_dir_mode = ui.new_combobox("lua", "b", " Body yaw", "Freestand", "Reversed")
+local aa_addons = ui.new_multiselect("lua", "b", "Body yaw adds", "Prefer safe angles", "Anti resolve", "Jitter if vulnerable", "More jitter")
 local aa_update = ui.new_checkbox("lua", "b", "Always update freestand")
 local aa_off_jitter = ui.new_slider("lua", "b", "Offset jitter", 0, 120, 20, true, "°", 1, off_jitter_degree)
 local misc_legit_aa = ui.new_checkbox("lua", "b", "E desync")
 local aa_onshot = ui.new_checkbox("lua", "b", "Onshot desync")
-local aa_predict = ui.new_checkbox("lua", "b", "Predict")
-local misc_fakelag = ui.new_checkbox("lua", "b", "Peek fakelag")
-local misc_edge_yaw = ui.new_checkbox("lua", "b", "Edge yaw")
 local misc_legmovement = ui.new_checkbox("lua", "b", "Leg movement")
-local misc_ind = ui.new_multiselect("lua", "b", "Indicators", "Arrows", "Damage")
+local aa_low_delta = ui.new_hotkey("lua", "b", "Low delta")
+local misc_edge_yaw = ui.new_hotkey("lua", "b", "Edge yaw")
+local misc_ind = ui.new_multiselect("lua", "b", "Indicators", "Arrows", "Gradient", "Doubletap")
 
 -- GLOBALS
 local local_player
@@ -56,9 +52,10 @@ local holdingE
 local flipJitter
 local should_edge
 local safe_edge
-local bubu_schema = false
 local flip_onshot = false
 local isFreestanding = true
+local isLowDelta = false
+local enemies_visible = false
 
 local firedthistick = {}
 local lastshottime = {}
@@ -66,6 +63,7 @@ local available_resolver_information = {}
 local enemy_shot_angle = {}
 local enemy_shot_time = {}
 local anti_brute_FORCE = false
+local jitter_when_vul = false
 
 local evasion_time = 0
 local evasion_ent = nil
@@ -274,6 +272,14 @@ local function get_weapon(idx)
 	end
 end
 
+local function compute_directions()
+	if ui.get(aa_low_delta) then
+		isLowDelta, isFreestanding = true, false
+	else
+		isLowDelta, isFreestanding = false, true
+	end
+end
+
 -- HVH SHIT
 local function return_wall_info(facing_offset) 
     local camera_angles = Vector(client.camera_angles())
@@ -334,47 +340,27 @@ local function get_closest_wall_side()
     return 1
 end
 
-local function debughe_sparla()
-
-    if local_player == nil then
-        return
+local function enemy_visible(idx)
+    for i=0, 8 do
+        local cx, cy, cz = entity.hitbox_position(idx, i)
+        if client.visible(cx, cy, cz) then
+            return true
+        end
     end
+    return false
+end
 
-	if not ui.get(aa_predict) then
-		return
+local function enemy_is_visile()
+	local players = entity.get_players(true)
+
+    for i=1, #players do
+
+        local idx = players[i]
+
+        if enemy_visible(idx) then
+            enemies_visible = true
+        end
 	end
-	
-	local hx,hy,hz = entity.hitbox_position(local_player, 0)
-	local lx,ly,lz = client.eye_position()
-
-	local _, camera_yaw = client.camera_angles()
-	camera_yaw = normalise_angle(camera_yaw)
-	local _, eye_yaw = entity.get_prop(local_player, "m_angEyeAngles")
-	local desync = normalise_angle(eye_yaw - get_body_yaw(local_player)/2)
-
-	lx = lx + math.cos(math.rad(desync)) * 12
-	ly = ly + math.sin(math.rad(desync)) * 12
-	lz = lz - 3
-
-	client.log("hx: ", hx, "hy: ", hy, "hz: ", hz)
-	client.log("x: ", lx, "y: ", ly, "z: ", lz)
-
-	local x0, y0 = renderer.world_to_screen(lx,ly,lz)
-	if x0 ~= nil then
-		if enemyclosesttocrosshair ~= nil then
-			local ex,ey,ez = entity.get_prop(enemyclosesttocrosshair, "m_vecOrigin")
-			local vx,vy,vz = entity.get_prop(enemyclosesttocrosshair, "m_vecViewOffset")
-			if ex == nil or vx==nil then return end
-			ex,ey,ez = ex+vx,ey+vy,ez+vz
-			local x1, y1 = renderer.world_to_screen(ex,ey,ez)
-			if x1 ~= nil then
-				renderer.line(x0,y0,x1,y1,0,255,0,50)
-				renderer.circle(x0, y0, 0, 255, 0, 255, 2, 0, 1)
-				renderer.circle(x1, y1, 0, 255, 0, 255, 2, 0, 1)
-			end	
-		end
-	end
-	
 end
 
 local function get_ticks_amount(max_ticks_number)
@@ -427,7 +413,7 @@ local function return_freestanding(enemy, ...)
 				bestangle = v * -1
 			end
 			elseif(damage1 == lowest_dmg) then
-					return 0
+				return 0
 			end
 		end
 	end
@@ -629,45 +615,42 @@ local function apply_offsets(mode,offset)
 	local duckamt = entity.get_prop(local_player,"m_flDuckAmount")
 	local crouching_ct = duckamt >= 0.9 and is_crouching(local_player) and entity.get_prop(local_player,"m_iTeamNum") == 3 and not local_jumping
 	local crouching_t = duckamt >= 0.9 and is_crouching(local_player) and entity.get_prop(local_player,"m_iTeamNum") == 2 and not local_jumping
+	enemy_is_visile()
 
 	ui.set(aa_yaw, "180")
 	if mode == 1 then
-		-- BACKWARDS
-		if ui.get(fake_walk) and local_velocity > 5 then
-			ui.set(aa_yaw_offset, 17)
-			ui.set(aa_body_limit,23)
-		else
-			ui.set(aa_yaw_offset, local_velocity > 95 and 0 or 13)
-			ui.set(aa_body_limit,33)
-		end
+		-- LOW DELTA
+		ui.set(aa_yaw_offset, 15)
+		ui.set(aa_body_limit,23)
+		ui.set(aa_yaw_jitter, "offset")
+		ui.set(aa_yaw_jitter_offset, 0) 
 		ui.set(aa_fake_yaw, "static")
 		ui.set(aa_fake_yaw_slider, 180)
 	elseif mode == 4 then
 		-- JITTER NEBUNATIC
 		ui.set(aa_yaw_offset, offset)
 		ui.set(aa_fake_yaw, "jitter")
-		ui.set(aa_fake_yaw_slider, local_velocity < 130 and 95 or 0)
-		ui.set(aa_body_limit, 60)
+		ui.set(aa_fake_yaw_slider, 0)
+		ui.set(aa_body_limit, 48)
 	else
 		-- IDEAL YAW
 		ui.set(aa_yaw_offset, (mode == 3 and crouching_ct and 17) or 0)
 		ui.set(aa_fake_yaw, "static")
 		
-		if anti_brute_FORCE and not eschiva then offset = -enemy_shot_angle[enemyclosesttocrosshair] end
+		if jitter_when_vul and not anti_brute_FORCE and not eschiva then ui.set(aa_fake_yaw, "jitter") offset = 0 end
+		if anti_brute_FORCE and not eschiva then ui.set(aa_fake_yaw, "static") offset = -enemy_shot_angle[enemyclosesttocrosshair] end
 		if eschiva then offset = -offset end
 		ui.set(aa_fake_yaw_slider, (flip_onshot and -offset) or offset)
 
 		-- SET DESYNC LIMIT
 		if mode == 3 and crouching_ct then
-			if bubu_schema and not safe_edge then
-				ui.set(aa_body_limit,54 + client.random_int(3,6))
-			else
-				ui.set(aa_body_limit,30 + client.random_int(3,6))
-			end
+			ui.set(aa_body_limit,30 + client.random_int(3,6))
 		else
-			ui.set(aa_body_limit,holdingE and 58 or 60)
+			ui.set(aa_body_limit, holdingE and 58 or 60)
 		end
 
+		-- SET LOWER BODY YAW
+		ui.set(aa_lby, ui.get(doubletap) and ui.get(misc_doubletap) and "eye yaw" or "opposite")
 	end
 end
 
@@ -677,7 +660,7 @@ local function bullet_impact(e)
 		return
 	end
 	
-	if ui.get(aa_anti_resolve) and entity.is_alive(local_player) then
+	if contains(ui.get(aa_addons),"Anti resolve") and entity.is_alive(local_player) then
         local entity_index = client.userid_to_entindex(e.userid)
 		if not entity.is_alive(entity_index) then
 			return
@@ -758,7 +741,7 @@ local function setup_command(cmd)
 	end
 
     -- EDGE YAW
-	if ui.get(misc_edge_yaw) and not can_enemy_hit_head(enemyclosesttocrosshair) and not local_jumping and not ui.get(misc_fakeduck) and not holdingE then
+	if ui.get(misc_edge_yaw) and not can_enemy_hit_head(enemyclosesttocrosshair) and isFreestanding and not local_jumping and not ui.get(misc_fakeduck) and not holdingE then
 		ui.set(aa_edge,true)
 	else
 		ui.set(aa_edge,false)
@@ -775,17 +758,6 @@ local function setup_command(cmd)
 	else
 		ui.set(misc_legs,"never slide")
 	end
-	
-	-- FAKE LAG 
-	if ui.get(misc_fakelag) then
-		if leg_exposed or local_jumping then
-			ui.set(fl_amount,"Fluctuate")	
-			ui.set(fl_variance, 0)
-		else
-			ui.set(fl_amount,"Maximum")
-			ui.set(fl_variance, 15)
-		end
-    end
 
 	-- OTHER STUFF
 	if enemyclosesttocrosshair ~= nil then
@@ -853,6 +825,7 @@ local function setup_command(cmd)
 			local ent,damage = client.trace_bullet(enemyclosesttocrosshair, ex, ey, ez, lx, ly, lz,true)
 			local scaled_dmg = client.scale_damage(enemyclosesttocrosshair, 1, damage)
 
+
 			if damage > (ui.get(aa_ev4sion_slider) * lp_hp) / 100 then
 				evasion_last_ent = evasion_ent
 				evasion_ent = enemyclosesttocrosshair
@@ -860,39 +833,6 @@ local function setup_command(cmd)
 				evasion_last_ent = evasion_ent
 				evasion_ent = nil
 			end	
-		end
-	end
-	
-	if ui.get(aa_predict) then
-		if(enemyclosesttocrosshair ~= nil and #enemies ~= 0 ) then
-
-			if entity.is_dormant(enemyclosesttocrosshair) then
-				return
-			end
-			
-			local hx,hy,hz = entity.hitbox_position(local_player, 0)
-			local lx,ly,lz = client.eye_position()
-			lz = hz
-			local _, eye_yaw = entity.get_prop(local_player, "m_angEyeAngles")
-			local desync = normalise_angle(eye_yaw - get_body_yaw(local_player))
-			lx = lx + math.cos(math.rad(desync)) * 20
-			ly = ly + math.sin(math.rad(desync)) * 12	
-			
-			local ex,ey,ez = entity.get_prop(enemyclosesttocrosshair, "m_vecOrigin")
-			local vx,vy,vz = entity.get_prop(enemyclosesttocrosshair, "m_vecViewOffset")
-			ex,ey,ez = ex+vx,ey+vy,ez+vz
-			
-			local lp_hp = entity.get_prop(local_player, "m_iHealth")
-			local ent,damage = client.trace_bullet(enemyclosesttocrosshair, ex, ey, ez, lx, ly, lz,true)
-			local ndmg = (ui.get(aa_ev4sion_slider) * lp_hp) / 100
-
-			if damage > 1 and not firedthistick[enemyclosesttocrosshair] and local_velocity < 10 then
-				bubu_schema = true
-			else
-				bubu_schema = false
-			end	
-		else
-			bubu_schema = false	
 		end
 	end
 end
@@ -931,10 +871,11 @@ local function run_command()
 		end
 	end
 
+	compute_directions()
     compute_traces()
     closest_wall_side = get_closest_wall_side()
-	anti_brute_FORCE = ui.get(aa_anti_resolve) and available_resolver_information[enemyclosesttocrosshair] and enemy_shot_angle[enemyclosesttocrosshair] ~= nil and (enemy_shot_time[enemyclosesttocrosshair] ~= nil and enemy_shot_time[enemyclosesttocrosshair] > globals.curtime())
-
+	anti_brute_FORCE = contains(ui.get(aa_addons),"Anti resolve") and available_resolver_information[enemyclosesttocrosshair] and enemy_shot_angle[enemyclosesttocrosshair] ~= nil and (enemy_shot_time[enemyclosesttocrosshair] ~= nil and enemy_shot_time[enemyclosesttocrosshair] > globals.curtime())
+	jitter_when_vul = contains(ui.get(aa_addons),"Jitter if vulnerable") and (can_enemy_hit_head(enemyclosesttocrosshair) or is_Feet_Exposed(enemyclosesttocrosshair,16)) and (local_velocity > 5) and not ui.get(fake_walk)
 	
 	if(enemyclosesttocrosshair ~= nil and #enemies ~= 0) then
 		freestanding_angle = return_freestanding(enemyclosesttocrosshair,-90,90)
@@ -958,13 +899,15 @@ local function run_command()
 	should_edge = ShouldPreserve(enemyclosesttocrosshair)
 	safe_edge = is_edge_safe(enemyclosesttocrosshair)
 
-	if isFreestanding then
-		if ui.get(aa_safety) then
+	if isLowDelta then
+		apply_offsets(1,0)
+	elseif isFreestanding then
+		if contains(ui.get(aa_addons),"Prefer safe angles") then
 			if should_edge then
 				if closest_wall_side == 0 then
-					apply_offsets(2,180)
+					apply_offsets(2,90)
 				elseif closest_wall_side == 1 then
-					apply_offsets(3,-180)
+					apply_offsets(3,-90)
 				end
 			end
 			if should_edge and safe_edge then
@@ -978,17 +921,20 @@ local function run_command()
 		if fs_angle == nil then
 			return
 		elseif fs_angle == -90 then
-			apply_offsets(2,180)
+			apply_offsets(2,ui.get(aa_dir_mode) == "Freestand" and 90 or -90)
 		elseif fs_angle == 90 then
-			apply_offsets(3,-180)
+			apply_offsets(3,ui.get(aa_dir_mode) == "Freestand" and -90 or 90)
 		else
 			apply_offsets(4,0)
-		end	
+		end
 	end
 	
 	if (#enemies == 0 and ui.get(aa_off_jitter) > 0 and not (isLeft or isRight)) then
 		ui.set(aa_yaw_jitter,"offset")
 		ui.set(aa_yaw_jitter_offset,-ui.get(aa_off_jitter))
+	elseif contains(ui.get(aa_addons),"More jitter") and not jitter_when_vul and not anti_brute_FORCE and not eschiva then
+		ui.set(aa_yaw_jitter,"offset")
+		ui.set(aa_yaw_jitter_offset,5)
 	else
 		ui.set(aa_yaw_jitter,"Off")
 	end
@@ -996,6 +942,69 @@ local function run_command()
 	flip_onshot = false
 end
 
+-- INDICATOARE BOMBA
+local function apply_indicators(side)
+	scrsize_x, scrsize_y = client.screen_size()
+	local center_x, center_y = scrsize_x / 2, scrsize_y / 2
+
+	if not entity.is_alive(entity.get_local_player()) then
+		return
+	end
+
+	local next_attack = math.max(entity.get_prop(entity.get_prop(entity.get_local_player(), "m_hActiveWeapon"), "m_flNextPrimaryAttack")+0.25 or 0, entity.get_prop(entity.get_local_player(), "m_flNextAttack") or 0)
+	local body_yaw = math.floor(math.min(58, math.abs(entity.get_prop(entity.get_local_player(), "m_flPoseParameter", 11)*120-60)))
+	local alpha = math.floor(math.sin(globals.realtime() % 3 * 4) * (255 / 2 - 1) + 255 / 2)
+
+	local h_index = 25
+	local r,g,b
+	if anti_brute_FORCE then
+		r,g,b = 0,100,0
+	elseif contains(ui.get(aa_addons),"Prefer safe angles") and should_edge and safe_edge then
+		r,g,b = 200,100,0
+	elseif fs_angle == 90 or fs_angle == -90 then
+		r,g,b = 89,119,239
+	else
+		r,g,b = 163,160,163
+	end
+
+	if side == "left" then
+		client.draw_text(c, center_x - 45, center_y, r,g,b,alpha, "c+", 0, "⯇")
+		client.draw_text(c, center_x + 45, center_y, 163,160,163,255, "c+", 0, "⯈")
+	end
+
+	if side == "right" then
+		client.draw_text(c, center_x + 45, center_y, r,g,b,alpha, "c+", 0, "⯈")
+		client.draw_text(c, center_x - 45, center_y, 163,160,163,255, "c+", 0, "⯇")
+	end
+
+	if side == "neutral" then 
+		client.draw_text(c, center_x + 45, center_y, 163,160,163,255, "c+", 0, "⯈")
+		client.draw_text(c, center_x - 45, center_y, 163,160,163,255, "c+", 0, "⯇")
+	end
+
+	if side == "gradient" then
+		renderer.gradient(center_x, center_y + h_index, -body_yaw, 3, r,g,b,255, 0, 0, 0, 0, true)
+		renderer.gradient(center_x, center_y + h_index, body_yaw, 3, r,g,b,255, 0, 0, 0, 0, true)
+	end
+
+	if contains(ui.get(misc_ind),"Gradient") then
+		h_index = h_index + 10
+	end
+
+	if side == "doubletap" then
+		if ui.get(doubletap) and ui.get(misc_doubletap) then
+			renderer.text(center_x, center_y + h_index, 163,160,163,255, "c", 0, "[          ]")
+			if next_attack <= globals.curtime() then
+				renderer.text(center_x, center_y + h_index, 255,255,255,alpha, "c", 0, "RAPID")
+			else
+				renderer.circle_outline(center_x + 25, center_y + h_index, 255,255,255,90, 5, 270, 1.0 - (3 * math.abs(math.max(next_attack) - globals.curtime())), 2)
+				renderer.text(center_x, center_y + h_index, 255,255,255,255, "c", 0, "RAPID")
+			end
+		end
+	end
+end
+
+ -- DAM SI NOI PRINT LA ELE :) 
 local function paint(c)
 	if not ui.get(enable_aa) then
 		return
@@ -1004,33 +1013,30 @@ local function paint(c)
 	if not entity.is_alive(local_player) then
 		return
 	end
-	
-	scrsize_x, scrsize_y = client.screen_size()
-	local center_x, center_y = scrsize_x / 2, scrsize_y / 2
 
-	local r,g,b
-	if anti_brute_FORCE then
-		r,g,b = 0,100,0
-	elseif ui.get(aa_safety) and should_edge and safe_edge then
-		r,g,b = 200,100,0
-	else
-		r,g,b = 89,119,239
+	if ui.get(misc_edge_yaw) then
+		renderer.indicator(110,200,60,200, "EDGE")
 	end
 
-	local alpha = 255
-
-	if contains(ui.get(misc_ind),"Damage") then
-		client.draw_text(c, center_x, center_y + 28, 255, 255, 255, 255, "c", 0, ui.get(rage_mindamage))
+	if ui.get(onshot) then
+		renderer.indicator(255,255,255,200, "ONSHOT")
 	end
+
+	if contains(ui.get(misc_ind),"Gradient") then
+		apply_indicators("gradient")
+	end
+
+	if contains(ui.get(misc_ind),"Doubletap") then
+		apply_indicators("doubletap")
+	end
+
 	if contains(ui.get(misc_ind),"Arrows") then
-		if ui.get(aa_safety) then
+		if contains(ui.get(aa_addons),"Prefer safe angles") then
 			if should_edge then
 				if closest_wall_side == 0 then
-					client.draw_text(c, center_x - 45, center_y, r,g,b,255, "c+", 0, "⯇")
-					client.draw_text(c, center_x + 45, center_y, 163,160,163,255, "c+", 0, "⯈")
+					apply_indicators("left")
 				elseif closest_wall_side == 1 then
-					client.draw_text(c, center_x + 45, center_y, r,g,b,255, "c+", 0, "⯈")
-					client.draw_text(c, center_x - 45, center_y, 163,160,163,255, "c+", 0, "⯇")
+					apply_indicators("right")
 				end		
 			end
 			
@@ -1039,14 +1045,11 @@ local function paint(c)
 			end
 		end
 		if fs_angle == -90 then
-			client.draw_text(c, center_x - 45, center_y, r,g,b,255, "c+", 0, "⯇")
-			client.draw_text(c, center_x + 45, center_y, 163,160,163,255, "c+", 0, "⯈")
+			apply_indicators(ui.get(aa_dir_mode) == "Freestand" and "left" or "right")
 		elseif fs_angle == 90 then
-			client.draw_text(c, center_x + 45, center_y, r,g,b,255, "c+", 0, "⯈")
-			client.draw_text(c, center_x - 45, center_y, 163,160,163,255, "c+", 0, "⯇")
+			apply_indicators(ui.get(aa_dir_mode) == "Freestand" and "right" or "left")
 		else
-			client.draw_text(c, center_x + 45, center_y, 163,160,163,255, "c+", 0, "⯈")
-			client.draw_text(c, center_x - 45, center_y, 163,160,163,255, "c+", 0, "⯇")
+			apply_indicators("neutral")
 		end	
 	end
 end
@@ -1085,57 +1088,56 @@ client.set_event_callback("setup_command", setup_command)
 client.set_event_callback("run_command", run_command)
 client.set_event_callback("paint", paint)
 
+local android_notify=(function()local a={callback_registered=false,maximum_count=7,data={}}function a:register_callback()if self.callback_registered then return end;client.set_event_callback('paint_ui',function()local b={client.screen_size()}local c={56,56,57}local d=5;local e=self.data;for f=#e,1,-1 do self.data[f].time=self.data[f].time-globals.frametime()local g,h=255,0;local i=e[f]if i.time<0 then table.remove(self.data,f)else local j=i.def_time-i.time;local j=j>1 and 1 or j;if i.time<0.5 or j<0.5 then h=(j<1 and j or i.time)/0.5;g=h*255;if h<0.2 then d=d+15*(1.0-h/0.2)end end;local k={renderer.measure_text(nil,i.draw)}local l={b[1]/2-k[1]/2+3,b[2]-b[2]/100*17.4+d}renderer.circle(l[1],l[2],c[1],c[2],c[3],g,20,180,0.5)renderer.circle(l[1]+k[1],l[2],c[1],c[2],c[3],g,20,0,0.5)renderer.rectangle(l[1],l[2]-20,k[1],40,c[1],c[2],c[3],g)renderer.text(l[1]+k[1]/2,l[2],255,255,255,g,'c',nil,i.draw)d=d-50 end end;self.callback_registered=true end)end;function a:paint(m,n)local o=tonumber(m)+1;for f=self.maximum_count,2,-1 do self.data[f]=self.data[f-1]end;self.data[1]={time=o,def_time=o,draw=n}self:register_callback()end;return a end)()
+
 local function loadDefault()
-	ui.set(aa_safety,true)
 	ui.set(aa_ev4sion,true)
-	ui.set(aa_ev4sion_slider,50)
-	ui.set(aa_anti_resolve ,true)
+	ui.set(aa_ev4sion_slider,70)
+	ui.set(aa_dir_mode, "Reversed")
+	ui.set(aa_addons, "Prefer safe angles", "Anti resolve", "Jitter if vulnerable")
 	ui.set(aa_update,false)
 	ui.set(aa_off_jitter,20)
 	ui.set(misc_legit_aa,true)
 	ui.set(aa_onshot,true)
-	ui.set(aa_predict,false)
-	ui.set(misc_fakelag,true)
-	ui.set(misc_edge_yaw,true)
-	ui.set(misc_legmovement,true)
-	ui.set(misc_ind, "Arrows", "Damage")
-	ui.set(aa_lby, "eye yaw")
+	ui.set(misc_legmovement,false)
+	ui.set(misc_ind, "Arrows", "Gradient", "Doubletap")
 	ui.set(aa_fs_triggers,"-")
+	android_notify:paint(5, "CONFIG SUCCESSFULLY LOADED")
 end
 
 local def_cfg = ui.new_button("lua", "b", "Load CFG", loadDefault)
 
 local function handle_menu()
 	local state_aa = ui.get(enable_aa)
-	ui.set_visible(aa_safety, state_aa)
+	local evesion = ui.get(aa_ev4sion)
+	ui.set_visible(aa_dir_mode, state_aa)
 	ui.set_visible(aa_ev4sion, state_aa)
-	ui.set_visible(aa_ev4sion_slider, state_aa)
-	ui.set_visible(aa_anti_resolve, state_aa)
+	ui.set_visible(aa_ev4sion_slider, state_aa and evesion)
+	ui.set_visible(aa_addons, state_aa)
 	ui.set_visible(aa_update, state_aa)
 	ui.set_visible(aa_off_jitter, state_aa)
 	ui.set_visible(misc_legit_aa, state_aa)
 	ui.set_visible(aa_onshot, state_aa)
-	ui.set_visible(aa_predict, state_aa)
-	ui.set_visible(misc_fakelag, state_aa)
-	ui.set_visible(misc_edge_yaw, state_aa)
 	ui.set_visible(misc_legmovement, state_aa)
+	ui.set_visible(aa_low_delta, state_aa)
+	ui.set_visible(misc_edge_yaw, state_aa)
 	ui.set_visible(misc_ind, state_aa)
 	ui.set_visible(def_cfg, state_aa)
 end 
 
-ui.set_visible(aa_safety, false)
+ui.set_visible(aa_dir_mode, false)
 ui.set_visible(aa_ev4sion, false)
 ui.set_visible(aa_ev4sion_slider, false)
-ui.set_visible(aa_anti_resolve, false)
+ui.set_visible(aa_addons, false)
 ui.set_visible(aa_update, false)
 ui.set_visible(aa_off_jitter, false)
 ui.set_visible(misc_legit_aa, false)
 ui.set_visible(aa_onshot, false)
-ui.set_visible(aa_predict, false)
-ui.set_visible(misc_fakelag, false)
-ui.set_visible(misc_edge_yaw, false)
 ui.set_visible(misc_legmovement, false)
+ui.set_visible(aa_low_delta, false)
+ui.set_visible(misc_edge_yaw, false)
 ui.set_visible(misc_ind, false)
 ui.set_visible(def_cfg, false)
 
 ui.set_callback(enable_aa, handle_menu)
+ui.set_callback(aa_ev4sion, handle_menu)
