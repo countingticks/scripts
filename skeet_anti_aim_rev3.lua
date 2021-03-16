@@ -1010,8 +1010,8 @@ local function apply_indicators(side)
 
 	if side == "doubletap" then
 		if ui.get(refs.misc_doubletap[KEYBIND]) and ui.get(refs.misc_doubletap[CHECKBOX]) then
-			local active_weapon = entity.get_prop(enemyclosesttocrosshair, "m_hActiveWeapon")
-			if active_weapon ~= nil then
+			local weapon = entity.get_player_weapon(entity.get_local_player())
+			if weapon ~= nil then 
 				renderer.text(center_x, center_y + h_index, 163,160,163,255, "c", 0, "[          ]")
 				if next_attack <= globals.curtime() then
 					renderer.text(center_x, center_y + h_index, 255,255,255,alpha, "c", 0, "RAPID")
