@@ -968,7 +968,7 @@ local function apply_indicators(side)
 		return
 	end
 
-	local next_attack = math.max(entity.get_prop(entity.get_prop(entity.get_local_player(), "m_hActiveWeapon"), "m_flNextPrimaryAttack")+0.25 or 0, entity.get_prop(entity.get_local_player(), "m_flNextAttack") or 0)
+	local next_attack = math.max(entity.get_prop(entity.get_prop(entity.get_local_player(), "m_hActiveWeapon"), "m_flNextPrimaryAttack") + 0.25 or 0, entity.get_prop(entity.get_local_player(), "m_flNextAttack") or 0)
 	local body_yaw = math.floor(math.min(58, math.abs(entity.get_prop(entity.get_local_player(), "m_flPoseParameter", 11)*120-60)))
 	local alpha = math.floor(math.sin(globals.realtime() % 3 * 4) * (255 / 2 - 1) + 255 / 2)
 
@@ -1010,12 +1010,15 @@ local function apply_indicators(side)
 
 	if side == "doubletap" then
 		if ui.get(refs.misc_doubletap[KEYBIND]) and ui.get(refs.misc_doubletap[CHECKBOX]) then
-			renderer.text(center_x, center_y + h_index, 163,160,163,255, "c", 0, "[          ]")
-			if next_attack <= globals.curtime() then
-				renderer.text(center_x, center_y + h_index, 255,255,255,alpha, "c", 0, "RAPID")
-			else
-				renderer.circle_outline(center_x + 25, center_y + h_index, 255,255,255,90, 5, 270, 1.0 - (3 * math.abs(math.max(next_attack) - globals.curtime())), 2)
-				renderer.text(center_x, center_y + h_index, 255,255,255,255, "c", 0, "RAPID")
+			local active_weapon = entity.get_prop(enemyclosesttocrosshair, "m_hActiveWeapon")
+			if active_weapon ~= nil then
+				renderer.text(center_x, center_y + h_index, 163,160,163,255, "c", 0, "[          ]")
+				if next_attack <= globals.curtime() then
+					renderer.text(center_x, center_y + h_index, 255,255,255,alpha, "c", 0, "RAPID")
+				else
+					renderer.circle_outline(center_x + 25, center_y + h_index, 255,255,255,90, 5, 270, 1.0 - (3 * math.abs(math.max(next_attack) - globals.curtime())), 2)
+					renderer.text(center_x, center_y + h_index, 255,255,255,255, "c", 0, "RAPID")
+				end
 			end
 		end
 	end
