@@ -51,12 +51,11 @@ local menu = {
 	misc_ind           = ui.new_multiselect("aa", "anti-aimbot angles", "Indicators", "Arrows", "Gradient", "Doubletap", "Extra"),
 
 
-	plist_enable       = ui.new_checkbox("players", "adjustments", "enable unique anti-aims"),
+	plist_label       = ui.new_label("players", "adjustments", "unique anti-aims"),
 	plist_adds         = ui.new_multiselect("players", "adjustments", "extra", "jitter on move", "custom slow mode", "low delta"),
 	plist_slow         = ui.new_combobox("players", "adjustments", "slowwalk aa mode", "anti-neverlose", "jitter", "canary")
 }
-ui.set_visible(menu.plist_adds , false)
-ui.set_visible(menu.plist_slow , false)
+
 -- GLOBALS
 local CHECKBOX = 1
 local MODE = 1
@@ -87,6 +86,7 @@ local isFreestanding = true
 local isLowDelta = false
 local enemies_visible = false
 
+local aa_player_list = {}
 local firedthistick = {}
 local lastshottime = {}
 local available_resolver_information = {}
@@ -108,7 +108,6 @@ local wpn_awp = false
 local wpn_ssg = false
 local wpn_def = false
 
-local aa_player_list = {}
 -- SOME FUNCTIONS
 local function contains(table, val)
     for i = 1, #table do
@@ -121,13 +120,11 @@ end
 
 for i = 1 , 64 do 
 	aa_player_list[i] = {chk = false}
-end 
+end
 
 local function plist_add_element(name , menu_ref , elem_type , def)
 	local callback = function()
-		if entity.is_alive(local_player) then
-			aa_player_list[ui.get(ref.player_list)]["" .. name] = ui.get(menu_ref)
-		end
+		aa_player_list[ui.get(ref.player_list)]["" .. name] = ui.get(menu_ref)
 	end 
 	ui.set_callback(menu_ref,callback)
 
@@ -148,31 +145,25 @@ local function plist_add_element(name , menu_ref , elem_type , def)
 	end 
 end 
 
+ui.set_visible(menu.plist_slow , false)
 plist_add_element("plist_adds",menu.plist_adds , "multi")
 plist_add_element("plist_slow",menu.plist_slow , "combo" , "canary")
 
-local function update_plist_chk()	
-	aa_player_list[ui.get(ref.player_list)]["chk"] = ui.get(menu.plist_enable)
-
-	ui.set_visible(menu.plist_adds , aa_player_list[ui.get(ref.player_list)]["chk"])
-	ui.set_visible(menu.plist_slow , aa_player_list[ui.get(ref.player_list)]["chk"] and contains(ui.get(menu.plist_adds), "custom slow mode")) 
+local function update_plist_chk()
+	ui.set_visible(menu.plist_slow , contains(ui.get(menu.plist_adds), "custom slow mode")) 
 end 
 
 local function update_plist_visible()
-	if not ui.get(menu.plist_enable) then return end
 	if ui.is_menu_open() then
-		ui.set_visible(menu.plist_slow , aa_player_list[ui.get(ref.player_list)]["chk"] and contains(ui.get(menu.plist_adds), "custom slow mode"))
+		ui.set_visible(menu.plist_slow , contains(ui.get(menu.plist_adds), "custom slow mode"))
 	end
 end
 client.set_event_callback("paint", update_plist_visible)
 
 local function set_plist()
-	ui.set(menu.plist_enable,aa_player_list[ui.get(ref.player_list)]["chk"]) 
 	ui.set(menu.plist_adds,aa_player_list[ui.get(ref.player_list)]["plist_adds"]) 
 	ui.set(menu.plist_slow,aa_player_list[ui.get(ref.player_list)]["plist_slow"]) 
 end 
-
-ui.set_callback(menu.plist_enable,update_plist_chk)
 ui.set_callback(ref.player_list,set_plist)
 
 local function Vector(x,y,z) 
@@ -707,16 +698,14 @@ local function apply_offsets(mode,offset)
 	local duckamt = entity.get_prop(local_player,"m_flDuckAmount")
 	local crouching_ct = duckamt >= 0.9 and is_crouching(local_player) and entity.get_prop(local_player,"m_iTeamNum") == 3 and not local_jumping
 	local crouching_t = duckamt >= 0.9 and is_crouching(local_player) and entity.get_prop(local_player,"m_iTeamNum") == 2 and not local_jumping
-	local set_plist_chk = false
 	local set_plist_adds = {}
 	local set_plist_slow = false
 	local jitter_on_move = false
 
 	if enemyclosesttocrosshair ~= nil and not entity.is_dormant(enemyclosesttocrosshair) then
-		set_plist_chk = aa_player_list[enemyclosesttocrosshair]["chk"]
 		set_plist_adds = aa_player_list[enemyclosesttocrosshair]["plist_adds"]
 		set_plist_slow = aa_player_list[enemyclosesttocrosshair]["plist_slow"]
-		jitter_on_move = contains(set_plist_adds, "jitter on move") and can_enemy_hit_head(enemyclosesttocrosshair) and local_velocity > 5 and not local_jumping
+		jitter_on_move = contains(set_plist_adds, "jitter on move") and not can_enemy_hit_head(enemyclosesttocrosshair) and local_velocity > 5 and not local_jumping
 	end
 
 	ui.set(ref.aa_yaw[MODE], "180")
@@ -1085,21 +1074,6 @@ local function run_command()
 		end
 	end
 
-	if enemyclosesttocrosshair ~= nil and not entity.is_dormant(enemyclosesttocrosshair) then
-		local set_plist_adds = aa_player_list[enemyclosesttocrosshair]["plist_adds"]
-		local set_plist_slow = aa_player_list[enemyclosesttocrosshair]["plist_slow"]
-	
-		if contains(set_plist_adds, "custom slow mode") and ui.get(ref.fake_walk[KEYBIND]) then
-			if set_plist_slow == "anti-neverlose" then
-				apply_offsets(5, 0)
-			elseif set_plist_slow == "jitter" then 
-				apply_offsets(6, 0)
-			elseif set_plist_slow == "canary" then 
-				apply_offsets(7, 0)
-			end
-		end
-	end
-
 	if (#enemies == 0 and ui.get(menu.aa_off_jitter) > 0) then
 		ui.set(ref.aa_yaw_jitter[MODE], "offset")
 		ui.set(ref.aa_yaw_jitter[VALUE], -ui.get(menu.aa_off_jitter))
@@ -1114,6 +1088,21 @@ local function run_command()
 		ui.set(ref.aa_yaw_jitter[VALUE], 3)
 	else
 		ui.set(ref.aa_yaw_jitter[MODE], "off")
+	end
+
+	if enemyclosesttocrosshair ~= nil and not entity.is_dormant(enemyclosesttocrosshair) then
+		local set_plist_adds = aa_player_list[enemyclosesttocrosshair]["plist_adds"]
+		local set_plist_slow = aa_player_list[enemyclosesttocrosshair]["plist_slow"]
+	
+		if contains(set_plist_adds, "custom slow mode") and ui.get(ref.fake_walk[KEYBIND]) then
+			if set_plist_slow == "anti-neverlose" then
+				apply_offsets(5, 0)
+			elseif set_plist_slow == "jitter" then 
+				apply_offsets(6, 0)
+			elseif set_plist_slow == "canary" then 
+				apply_offsets(7, 0)
+			end
+		end
 	end
 
 	flip_onshot = false
