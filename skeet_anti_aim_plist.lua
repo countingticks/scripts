@@ -50,10 +50,8 @@ local menu = {
 	misc_edge_yaw      = ui.new_hotkey("aa", "anti-aimbot angles", "Edge yaw"),
 	misc_ind           = ui.new_multiselect("aa", "anti-aimbot angles", "Indicators", "Arrows", "Gradient", "Doubletap", "Extra"),
 
-
-	plist_label       = ui.new_label("players", "adjustments", "unique anti-aims"),
-	plist_adds         = ui.new_multiselect("players", "adjustments", "extra", "jitter on move", "custom slow mode", "low delta"),
-	plist_slow         = ui.new_combobox("players", "adjustments", "slowwalk aa mode", "anti-neverlose", "jitter", "canary")
+	plist_adds         = ui.new_multiselect("players", "adjustments", "unique anti-aims", "jitter on move", "custom slow mode", "low delta"),
+	plist_slow         = ui.new_combobox("players", "adjustments", "mode", "anti-neverlose", "jitter", "canary")
 }
 
 -- GLOBALS
@@ -145,20 +143,8 @@ local function plist_add_element(name , menu_ref , elem_type , def)
 	end 
 end 
 
-ui.set_visible(menu.plist_slow , false)
 plist_add_element("plist_adds",menu.plist_adds , "multi")
 plist_add_element("plist_slow",menu.plist_slow , "combo" , "canary")
-
-local function update_plist_chk()
-	ui.set_visible(menu.plist_slow , contains(ui.get(menu.plist_adds), "custom slow mode")) 
-end 
-
-local function update_plist_visible()
-	if ui.is_menu_open() then
-		ui.set_visible(menu.plist_slow , contains(ui.get(menu.plist_adds), "custom slow mode"))
-	end
-end
-client.set_event_callback("paint", update_plist_visible)
 
 local function set_plist()
 	ui.set(menu.plist_adds,aa_player_list[ui.get(ref.player_list)]["plist_adds"]) 
@@ -705,7 +691,7 @@ local function apply_offsets(mode,offset)
 	if enemyclosesttocrosshair ~= nil and not entity.is_dormant(enemyclosesttocrosshair) then
 		set_plist_adds = aa_player_list[enemyclosesttocrosshair]["plist_adds"]
 		set_plist_slow = aa_player_list[enemyclosesttocrosshair]["plist_slow"]
-		jitter_on_move = contains(set_plist_adds, "jitter on move") and not can_enemy_hit_head(enemyclosesttocrosshair) and local_velocity > 5 and not local_jumping
+		jitter_on_move = contains(set_plist_adds, "jitter on move") and local_velocity > 5 and not local_jumping
 	end
 
 	ui.set(ref.aa_yaw[MODE], "180")
@@ -760,7 +746,7 @@ local function apply_offsets(mode,offset)
 		if mode == 3 and crouching_ct then
 			ui.set(ref.aa_body_limit,30 + client.random_int(3,6))
 		else
-			ui.set(ref.aa_body_limit, holdingE and 58 or (contains(set_plist_adds, "low delta") and 15 or 60))
+			ui.set(ref.aa_body_limit, holdingE and 58 or (contains(set_plist_adds, "low delta") and 23 or 60))
 		end
 
 		-- SET LOWER BODY YAW
@@ -1084,8 +1070,8 @@ local function run_command()
 		ui.set(ref.aa_yaw_jitter[MODE], local_velocity < 5 and "off" or "center")
 		ui.set(ref.aa_yaw_jitter[VALUE], local_jumping and 0 or 65)
 	elseif wpn_ssg and not anti_brute_FORCE and not eschiva then
-		ui.set(ref.aa_yaw_jitter[MODE], "center")
-		ui.set(ref.aa_yaw_jitter[VALUE], 3)
+		ui.set(ref.aa_yaw_jitter[MODE], "offset")
+		ui.set(ref.aa_yaw_jitter[VALUE], 8)
 	else
 		ui.set(ref.aa_yaw_jitter[MODE], "off")
 	end
@@ -1295,51 +1281,56 @@ end
 local def_cfg = ui.new_button("aa", "anti-aimbot angles", "Load CFG", loadDefault)
 
 local function handle_menu()
-	local state_aa = ui.get(menu.enable_aa)
-	local evesion = ui.get(menu.aa_ev4sion)
+	if ui.is_menu_open() then
+		local state_aa = ui.get(menu.enable_aa)
+		local evesion = ui.get(menu.aa_ev4sion)
 
-	-- MENU
-	ui.set_visible(menu.aa_dir_mode, state_aa)
+		-- MENU
+		ui.set_visible(menu.aa_dir_mode, state_aa)
 
-	ui.set_visible(menu.aa_secret_feature, state_aa)
-	ui.set_visible(menu.aa_ev4sion, state_aa)
-	ui.set_visible(menu.aa_ev4sion_slider, state_aa and evesion)
-	ui.set_visible(menu.aa_addons, state_aa)
+		ui.set_visible(menu.aa_secret_feature, state_aa)
+		ui.set_visible(menu.aa_ev4sion, state_aa)
+		ui.set_visible(menu.aa_ev4sion_slider, state_aa and evesion)
+		ui.set_visible(menu.aa_addons, state_aa)
 
-	ui.set_visible(menu.aa_update, state_aa)
-	ui.set_visible(menu.aa_off_jitter, state_aa)
-	ui.set_visible(menu.misc_legit_aa, state_aa)
+		ui.set_visible(menu.aa_update, state_aa)
+		ui.set_visible(menu.aa_off_jitter, state_aa)
+		ui.set_visible(menu.misc_legit_aa, state_aa)
 
-	ui.set_visible(menu.aa_onshot, state_aa)
-	ui.set_visible(menu.misc_legmovement, state_aa)
-	ui.set_visible(menu.aa_low_delta, state_aa)
+		ui.set_visible(menu.aa_onshot, state_aa)
+		ui.set_visible(menu.misc_legmovement, state_aa)
+		ui.set_visible(menu.aa_low_delta, state_aa)
 
-	ui.set_visible(menu.misc_edge_yaw, state_aa)
-	ui.set_visible(menu.misc_ind, state_aa)
-	ui.set_visible(def_cfg, state_aa)
-	
-	-- REFERENCES
-	ui.set_visible(ref.aa_state, not state_aa)
+		ui.set_visible(menu.misc_edge_yaw, state_aa)
+		ui.set_visible(menu.misc_ind, state_aa)
+		ui.set_visible(def_cfg, state_aa)
 
-	ui.set_visible(ref.aa_pitch, not state_aa)
-	ui.set_visible(ref.aa_yaw_base, not state_aa)
+		ui.set_visible(menu.plist_adds, state_aa)
+		ui.set_visible(menu.plist_slow, state_aa and contains(ui.get(menu.plist_adds), "custom slow mode"))
+		
+		-- REFERENCES
+		ui.set_visible(ref.aa_state, not state_aa)
 
-	ui.set_visible(ref.aa_yaw[MODE], not state_aa)
-	ui.set_visible(ref.aa_yaw[VALUE], not state_aa)
+		ui.set_visible(ref.aa_pitch, not state_aa)
+		ui.set_visible(ref.aa_yaw_base, not state_aa)
 
-	ui.set_visible(ref.aa_yaw_jitter[MODE], not state_aa)
-	ui.set_visible(ref.aa_yaw_jitter[VALUE], not state_aa)
+		ui.set_visible(ref.aa_yaw[MODE], not state_aa)
+		ui.set_visible(ref.aa_yaw[VALUE], not state_aa)
 
-	ui.set_visible(ref.aa_fake_yaw[MODE], not state_aa)
-	ui.set_visible(ref.aa_fake_yaw[VALUE], not state_aa)
+		ui.set_visible(ref.aa_yaw_jitter[MODE], not state_aa)
+		ui.set_visible(ref.aa_yaw_jitter[VALUE], not state_aa)
 
-	ui.set_visible(ref.aa_fs_byaw, not state_aa)
-	ui.set_visible(ref.aa_lby, not state_aa)
-	ui.set_visible(ref.aa_body_limit, not state_aa)
-	
-	ui.set_visible(ref.aa_edge, not state_aa)
-	ui.set_visible(ref.aa_fs_triggers[CHECKBOX], not state_aa)
-	ui.set_visible(ref.aa_fs_triggers[KEYBIND], not state_aa)
+		ui.set_visible(ref.aa_fake_yaw[MODE], not state_aa)
+		ui.set_visible(ref.aa_fake_yaw[VALUE], not state_aa)
+
+		ui.set_visible(ref.aa_fs_byaw, not state_aa)
+		ui.set_visible(ref.aa_lby, not state_aa)
+		ui.set_visible(ref.aa_body_limit, not state_aa)
+		
+		ui.set_visible(ref.aa_edge, not state_aa)
+		ui.set_visible(ref.aa_fs_triggers[CHECKBOX], not state_aa)
+		ui.set_visible(ref.aa_fs_triggers[KEYBIND], not state_aa)
+	end
 end
 
 ui.set_visible(menu.aa_dir_mode, false)
@@ -1361,5 +1352,7 @@ ui.set_visible(menu.misc_edge_yaw, false)
 ui.set_visible(menu.misc_ind, false)
 ui.set_visible(def_cfg, false)
 
-ui.set_callback(menu.enable_aa, handle_menu)
-ui.set_callback(menu.aa_ev4sion, handle_menu)
+ui.set_visible(menu.plist_adds, false)
+ui.set_visible(menu.plist_slow, false)
+
+client.set_event_callback("paint", handle_menu)
