@@ -33,12 +33,13 @@ local off_jitter_degree = {
 local menu = {
 	enable_aa          = ui.new_checkbox("aa", "anti-aimbot angles", "Anti aim"),
 
-	aa_secret_feature  = ui.new_checkbox("aa", "anti-aimbot angles", "Super secret feature"),
 	aa_ev4sion         = ui.new_checkbox("aa", "anti-aimbot angles", "Evasion"),
 	aa_ev4sion_slider  = ui.new_slider("aa", "anti-aimbot angles", "Chance to block hit", 40, 100, 50, true, "%"),
-	aa_dir_mode        = ui.new_combobox("aa", "anti-aimbot angles", " Body yaw", "Freestand", "Reversed"),
+	aa_base            = ui.new_combobox("aa", "anti-aimbot angles", "Yaw base", "Local view", "At targets"),
+	aa_dir_mode        = ui.new_combobox("aa", "anti-aimbot angles", "Body yaw", "Freestand", "Reversed"),
 
 	aa_addons          = ui.new_multiselect("aa", "anti-aimbot angles", "Body yaw adds", "Prefer safe angles", "Anti resolve"),
+	aa_jitter 		   = ui.new_multiselect("aa", "anti-aimbot angles", "Jitter", "Synced", "Full", "Weapon based"),
 	aa_update          = ui.new_checkbox("aa", "anti-aimbot angles", "Always update freestand"),
 	aa_off_jitter      = ui.new_slider("aa", "anti-aimbot angles", "Offset jitter", 0, 120, 20, true, "°", 1, off_jitter_degree),
 
@@ -50,7 +51,7 @@ local menu = {
 	misc_edge_yaw      = ui.new_hotkey("aa", "anti-aimbot angles", "Edge yaw"),
 	misc_ind           = ui.new_multiselect("aa", "anti-aimbot angles", "Indicators", "Arrows", "Gradient", "Doubletap", "Extra"),
 
-	plist_adds         = ui.new_multiselect("players", "adjustments", "unique anti-aims", "jitter on move", "custom slow mode", "low delta"),
+	plist_adds         = ui.new_multiselect("players", "adjustments", "unique anti-aims", "custom slow mode", "low delta"),
 	plist_slow         = ui.new_combobox("players", "adjustments", "mode", "anti-neverlose", "jitter", "canary")
 }
 
@@ -91,6 +92,7 @@ local available_resolver_information = {}
 local enemy_shot_angle = {}
 local enemy_shot_time = {}
 local anti_brute_FORCE = false
+local jitter_backwards = false
 
 local evasion_time = 0
 local evasion_ent = nil
@@ -686,15 +688,14 @@ local function apply_offsets(mode,offset)
 	local crouching_t = duckamt >= 0.9 and is_crouching(local_player) and entity.get_prop(local_player,"m_iTeamNum") == 2 and not local_jumping
 	local set_plist_adds = {}
 	local set_plist_slow = false
-	local jitter_on_move = false
 
 	if enemyclosesttocrosshair ~= nil and not entity.is_dormant(enemyclosesttocrosshair) then
 		set_plist_adds = aa_player_list[enemyclosesttocrosshair]["plist_adds"]
 		set_plist_slow = aa_player_list[enemyclosesttocrosshair]["plist_slow"]
-		jitter_on_move = contains(set_plist_adds, "jitter on move") and local_velocity > 5 and not local_jumping
 	end
 
 	ui.set(ref.aa_yaw[MODE], "180")
+	ui.set(ref.aa_yaw_base, ui.get(menu.aa_base) == "Local view" and "Local view" or "At targets")
 	if mode == 1 then
 		-- LOW DELTA
 		ui.set(ref.aa_yaw[VALUE], 15)
@@ -736,11 +737,11 @@ local function apply_offsets(mode,offset)
 	else
 		-- IDEAL YAW
 		ui.set(ref.aa_yaw[VALUE], (mode == 3 and crouching_ct and 17) or 0)
-		ui.set(ref.aa_fake_yaw[MODE], jitter_on_move and "jitter" or "static")
+		ui.set(ref.aa_fake_yaw[MODE], contains(ui.get(menu.aa_jitter), "Synced") and not (crouching_ct or crouching_t) and not (should_edge and safe_edge) and "jitter" or "static")
 		
 		if anti_brute_FORCE and not eschiva then ui.set(ref.aa_fake_yaw[MODE], "static") offset = -enemy_shot_angle[enemyclosesttocrosshair] end
 		if eschiva then offset = -offset end
-		ui.set(ref.aa_fake_yaw[VALUE], (flip_onshot and -offset) or (jitter_on_move and 60 or offset))
+		ui.set(ref.aa_fake_yaw[VALUE], (flip_onshot and -offset) or (jitter_backwards and 0 or offset))
 
 		-- SET DESYNC LIMIT
 		if mode == 3 and crouching_ct then
@@ -750,7 +751,7 @@ local function apply_offsets(mode,offset)
 		end
 
 		-- SET LOWER BODY YAW
-		ui.set(ref.aa_lby, "eye yaw")
+		ui.set(ref.aa_lby, ui.get(ref.misc_doubletap[CHECKBOX]) and ui.get(ref.misc_doubletap[KEYBIND]) and "eye yaw" or "sway")
 	end
 end
 
@@ -936,7 +937,7 @@ local function setup_command(cmd)
 
 	-- GET ENEMY WEAPON
 	if enemyclosesttocrosshair ~= nil then
-		if ui.get(menu.aa_secret_feature) then 
+		if contains(ui.get(menu.aa_jitter), "Weapon based") then 
 			local enemy_weapon = entity.get_player_weapon(enemyclosesttocrosshair)
 			local enemy_item = nil 
 
@@ -953,19 +954,19 @@ local function setup_command(cmd)
 end
 
 local function weapon_auto(entity)
-	if not ui.get(menu.aa_secret_feature) or not ui.get(menu.enable_aa) then return false end
+	if not contains(ui.get(menu.aa_jitter), "Weapon based") or not ui.get(menu.enable_aa) then return false end
 	return (wpn_auto and enemyclosesttocrosshair == entity)
 end
 local function weapon_awp(entity)
-	if not ui.get(menu.aa_secret_feature) or not ui.get(menu.enable_aa) then return false end
+	if not contains(ui.get(menu.aa_jitter), "Weapon based") or not ui.get(menu.enable_aa) then return false end
 	return (wpn_awp and enemyclosesttocrosshair == entity)
 end
 local function weapon_ssg(entity)
-	if not ui.get(menu.aa_secret_feature) or not ui.get(menu.enable_aa) then return false end
+	if not contains(ui.get(menu.aa_jitter), "Weapon based") or not ui.get(menu.enable_aa) then return false end
 	return (wpn_ssg and enemyclosesttocrosshair == entity)
 end
 local function weapon_def(entity)
-	if not ui.get(menu.aa_secret_feature) or not ui.get(menu.enable_aa) then return false end
+	if not contains(ui.get(menu.aa_jitter), "Weapon based") or not ui.get(menu.enable_aa) then return false end
 	return (wpn_def and enemyclosesttocrosshair == entity)
 end
 
@@ -1007,6 +1008,7 @@ local function run_command()
     compute_traces()
     closest_wall_side = get_closest_wall_side()
 	anti_brute_FORCE = contains(ui.get(menu.aa_addons),"Anti resolve") and available_resolver_information[enemyclosesttocrosshair] and enemy_shot_angle[enemyclosesttocrosshair] ~= nil and (enemy_shot_time[enemyclosesttocrosshair] ~= nil and enemy_shot_time[enemyclosesttocrosshair] > globals.curtime())
+	jitter_backwards = can_enemy_hit_head(enemyclosesttocrosshair) and local_velocity < 40 and contains(ui.get(menu.aa_jitter), "Full") and not local_jumping
 
 	if(enemyclosesttocrosshair ~= nil and #enemies ~= 0) then
 		freestanding_angle = return_freestanding(enemyclosesttocrosshair,-90,90)
@@ -1036,9 +1038,9 @@ local function run_command()
 		if contains(ui.get(menu.aa_addons),"Prefer safe angles") then
 			if should_edge then
 				if closest_wall_side == 0 then
-					apply_offsets(2, 90)
+					apply_offsets(2, 180)
 				elseif closest_wall_side == 1 then
-					apply_offsets(3, -90)
+					apply_offsets(3, -180)
 				end
 			end
 			if should_edge and safe_edge then
@@ -1052,9 +1054,9 @@ local function run_command()
 		if fs_angle == nil then
 			return
 		elseif fs_angle == -90 then
-			apply_offsets(2, ui.get(menu.aa_dir_mode) == "Freestand" and 90 or -90)
+			apply_offsets(2, ui.get(menu.aa_dir_mode) == "Freestand" and 180 or -180)
 		elseif fs_angle == 90 then
-			apply_offsets(3, ui.get(menu.aa_dir_mode) == "Freestand" and -90 or 90)
+			apply_offsets(3, ui.get(menu.aa_dir_mode) == "Freestand" and -180 or 180)
 		else
 			apply_offsets(4, 0)
 		end
@@ -1063,6 +1065,9 @@ local function run_command()
 	if (#enemies == 0 and ui.get(menu.aa_off_jitter) > 0) then
 		ui.set(ref.aa_yaw_jitter[MODE], "offset")
 		ui.set(ref.aa_yaw_jitter[VALUE], -ui.get(menu.aa_off_jitter))
+	elseif jitter_backwards then
+		ui.set(ref.aa_yaw_jitter[MODE], "center")
+		ui.set(ref.aa_yaw_jitter[VALUE], ui.get(menu.aa_off_jitter))
 	elseif wpn_auto and not anti_brute_FORCE and not eschiva then
 		ui.set(ref.aa_yaw_jitter[MODE], local_velocity < 5 and "off" or "center")	
 		ui.set(ref.aa_yaw_jitter[VALUE], local_jumping and 0 or 40)
@@ -1070,7 +1075,7 @@ local function run_command()
 		ui.set(ref.aa_yaw_jitter[MODE], local_velocity < 5 and "off" or "center")
 		ui.set(ref.aa_yaw_jitter[VALUE], local_jumping and 0 or 65)
 	elseif wpn_ssg and not anti_brute_FORCE and not eschiva then
-		ui.set(ref.aa_yaw_jitter[MODE], "offset")
+		ui.set(ref.aa_yaw_jitter[MODE], "Center")
 		ui.set(ref.aa_yaw_jitter[VALUE], 8)
 	else
 		ui.set(ref.aa_yaw_jitter[MODE], "off")
@@ -1163,8 +1168,16 @@ local function apply_indicators(ind)
 	end
 
 	if ind == "extra" then 
+		if jitter_backwards then 
+			renderer.text(center_x, center_y + h_index, 155,171,232,alpha, "c", 0, "backwards")
+			h_index = h_index + 15
+		end
+		if flip_evasion then 
+			renderer.text(center_x, center_y + h_index, 155,171,232,alpha, "c", 0, "evasion")
+			h_index = h_index + 15
+		end
 		if ui.get(menu.aa_low_delta) then
-			renderer.text(center_x, center_y + h_index, 155,171,232,200, "c", 0, "low delta")
+			renderer.text(center_x, center_y + h_index, 155,171,232,alpha, "c", 0, "low delta")
 		end
 	end
 end
@@ -1261,17 +1274,18 @@ client.set_event_callback("run_command", run_command)
 client.set_event_callback("paint", paint)
 
 local function loadDefault()
-	ui.set(menu.aa_secret_feature, true)
+	ui.set(menu.aa_base, "At targets")
 	ui.set(menu.aa_ev4sion, true)
 	ui.set(menu.aa_ev4sion_slider, 70)
 	ui.set(menu.aa_dir_mode, "Freestand")
 	ui.set(menu.aa_addons, "Prefer safe angles", "Anti resolve")
+	ui.set(menu.aa_jitter, "Synced", "Full")
 	ui.set(menu.aa_update, false)
 	ui.set(menu.aa_off_jitter, 20)
 	ui.set(menu.misc_legit_aa, true)
 	ui.set(menu.aa_onshot, true)
 	ui.set(menu.misc_legmovement, false)
-	ui.set(menu.misc_ind, "Arrows", "Gradient", "Doubletap")
+	ui.set(menu.misc_ind, "Arrows", "Doubletap")
 	ui.set(ref.aa_state, true)
 	ui.set(ref.aa_pitch, "minimal")
 	ui.set(ref.aa_fs_triggers[CHECKBOX], "-")
@@ -1288,10 +1302,12 @@ local function handle_menu()
 		-- MENU
 		ui.set_visible(menu.aa_dir_mode, state_aa)
 
-		ui.set_visible(menu.aa_secret_feature, state_aa)
+		ui.set_visible(menu.aa_base, state_aa)
 		ui.set_visible(menu.aa_ev4sion, state_aa)
 		ui.set_visible(menu.aa_ev4sion_slider, state_aa and evesion)
+
 		ui.set_visible(menu.aa_addons, state_aa)
+		ui.set_visible(menu.aa_jitter, state_aa)
 
 		ui.set_visible(menu.aa_update, state_aa)
 		ui.set_visible(menu.aa_off_jitter, state_aa)
@@ -1335,10 +1351,12 @@ end
 
 ui.set_visible(menu.aa_dir_mode, false)
 
-ui.set_visible(menu.aa_secret_feature, false)
+ui.set_visible(menu.aa_base, false)
 ui.set_visible(menu.aa_ev4sion, false)
 ui.set_visible(menu.aa_ev4sion_slider, false)
+
 ui.set_visible(menu.aa_addons, false)
+ui.set_visible(menu.aa_jitter, false)
 
 ui.set_visible(menu.aa_update, false)
 ui.set_visible(menu.aa_off_jitter, false)
