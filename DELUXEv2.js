@@ -1,8 +1,7 @@
-
 const user = Cheat.GetUsername();
-const user_list = {"RazvanDard" : "dev", "bogdan56" : "dev", "adriaN1" : "beta"};
+const user_list = {"RazvanDard" : "dev", "bogdan56" : "dev", "adriaN1" : "beta" , "Alex23Pvp" : "beta"};
 
-var prefix = user_list[user]; // aka | beta | empty | trial
+var prefix = user_list[user];
 
 if(prefix != "dev" && prefix != "beta")
 	prefix = "";
@@ -202,6 +201,8 @@ get_keybinds = function()
 };
 
 const draw_outline_text = function(x, y, align, string, color, fontname) {
+	if(string == undefined) return;
+
 	Render.String(x - 1, y - 1, align, string, [0, 0, 0, 255], fontname);
 	Render.String(x - 1, y, align, string, [0, 0, 0, 255], fontname);
 	Render.String(x - 1, y + 1, align, string, [0, 0, 0, 255], fontname);
@@ -220,10 +221,10 @@ var render_watermark = function(x, y, w, h)
 {
 	const delay = Math.floor(Local.Latency() * 1000);
 	
-	var text = "phoenix v2" + " | " + user + " | delay: " + delay + " ms";
+	var text = "phoenix" + " | " + user + " | delay: " + delay + " ms";
 
 	if(prefix != "")
-		text = "phoenix v2 [" + prefix + "] | " + user + " | delay: " + delay + " ms";
+		text = "phoenix [" + prefix + "] | " + user + " | delay: " + delay + " ms";
 
 	const text_size = Render.TextSize(text, draggable_font);
 
@@ -297,21 +298,6 @@ const Colors =
     green : [0, 0, 255, 255]
 }
 
-const draw_outline_text = function(x, y, align, string, color, fontname) {
-	Render.String(x - 1, y - 1, align, string, [0, 0, 0, 255], fontname);
-	Render.String(x - 1, y, align, string, [0, 0, 0, 255], fontname);
-	Render.String(x - 1, y + 1, align, string, [0, 0, 0, 255], fontname);
-
-	Render.String(x, y + 1, align, string, [0, 0, 0, 255], fontname);
-	Render.String(x, y - 1, align, string, [0, 0, 0, 255], fontname);
-
-	Render.String(x + 1, y - 1, align, string, [0, 0, 0, 255], fontname);
-	Render.String(x + 1, y, align, string, [0, 0, 0, 255], fontname);
-	Render.String(x + 1, y + 1, align, string, [0, 0, 0, 255], fontname);
-
-	Render.String(x, y, align, string, color, fontname);
-}
-
 function Menu(x, y, w, h)
 {
 	this.x = x;
@@ -323,7 +309,7 @@ function Menu(x, y, w, h)
 	this.delta_y = 0;
 	this.dragging = false;
 	
-    this.is_open = false;
+    this.is_open = true;
     this.children = [];
 
     this.cur_tab = 0;
@@ -354,6 +340,9 @@ function Menu(x, y, w, h)
 			// update menu position
 			this.x = cursor.x - this.delta_x;
 			this.y = cursor.y - this.delta_y;
+
+			if(this.y < 0)
+				this.y = 0;
 		}
 
 		else {
@@ -397,9 +386,9 @@ function Menu(x, y, w, h)
         return chk;
     }
 
-	this.add_keybind = function(tab_name, name)
+	this.add_keybind = function(tab_name, name, default_key, allow_modes)
     {
-        var keybind = new Keybind(tab_name, name);
+        var keybind = new Keybind(tab_name, name, default_key, allow_modes);
         for(var i = 0; i < this.children.length;i++)
         {
             if(this.children[i].text == tab_name)
@@ -408,9 +397,9 @@ function Menu(x, y, w, h)
         return keybind;
     }
 
-    this.add_slider = function(tab_name, name, min_val, max_val)
+    this.add_slider = function(tab_name, name, min_val, max_val, sign)
     {
-        var slider = new Slider(tab_name, name, min_val, max_val);
+        var slider = new Slider(tab_name, name, min_val, max_val, sign);
         for(var i = 0; i < this.children.length;i++)
         {
             if(this.children[i].text == tab_name)
@@ -419,7 +408,7 @@ function Menu(x, y, w, h)
         return slider;
     }
 
-	this.add_combobox = function(tab_name, name, values, multi)
+	this.add_combobox = function(tab_name, name, values, multi, deselectable)
     {
 		
         var combo;
@@ -427,7 +416,7 @@ function Menu(x, y, w, h)
 		if(multi)
 			combo = new MultiBox(tab_name, name, values);
 		else 
-			combo = new ComboBox(tab_name, name, values);
+			combo = new ComboBox(tab_name, name, values, deselectable);
 
         for(var i = 0; i < this.children.length;i++)
         {
@@ -514,11 +503,6 @@ function Tab(x, y, text, tab_index)
 		}
         for(var i = 0; i < this.children.length; i++)
         {
-            if(this.children[i].visible)
-            {
-                padding += this.children[i].padding;
-            }
-
             if(menu.y + 10 + padding > menu.y + menu.h * 0.9)
             {
                 adder_x = 270;
@@ -526,7 +510,12 @@ function Tab(x, y, text, tab_index)
                 padding = 0;
             }
 
-            this.children[i].setup_positions(this.x + adder_x, menu.y + 10 + padding + adder_y)
+            this.children[i].setup_positions(this.x + adder_x, menu.y + 15 + padding + adder_y)
+
+			if(this.children[i].visible)
+            {
+                padding += this.children[i].padding;
+            }
 
 			if(this.children[i] != menu.focus)
             	this.children[i].handle_input()
@@ -576,8 +565,13 @@ function Checkbox(tab_name, name)
 	this.type = "checkbox"
     this.hovering = false;
     this.text_size = 0;
-    this.padding = 20;
+
     this.visible = true;
+	this.cfg = false;
+
+	
+    this.padding = 20;
+    this.padding_height = this.h;
 
     this.setup_positions = function(x, y)
     {
@@ -616,6 +610,9 @@ function Checkbox(tab_name, name)
             this.hovering = true;
         else
             this.hovering = false;
+		
+		this.cfg = this.value;
+		
     }
 
     this.set_visibility = function(visibility)
@@ -624,12 +621,13 @@ function Checkbox(tab_name, name)
     }
 }
 
-function ComboBox(tab_name, name, values)
+function ComboBox(tab_name, name, values, deselectable)
 {
     this.tab = tab_name;
     this.name = name;
     this.values = values;
 	this.selected = null
+	this.deselectable = deselectable;
 
 	this.value_selected = "None";
 
@@ -649,6 +647,9 @@ function ComboBox(tab_name, name, values)
     this.visible = true;
 	this.is_open = false;
 
+	this.padding_height = this.h * 2;
+	this.cfg;
+
     this.setup_positions = function(x, y)
     {
         this.x = x;
@@ -661,19 +662,19 @@ function ComboBox(tab_name, name, values)
             return;
 
         this.text_size = Render.TextSize(name, menu_font);
+		var y = this.y + this.h - this.text_size[1] / 2;
+        Render.FilledRect(this.x, y, this.w, this.h, MenuStyles.background);
 
-        Render.FilledRect(this.x, this.y, this.w, this.h, MenuStyles.background);
+        Render.Rect(this.x - 1, y - 1, this.w + 1, this.h + 1, Colors.black);
 
-        Render.Rect(this.x - 1, this.y - 1, this.w + 1, this.h + 1, Colors.black);
-
-        draw_outline_text(this.x, this.y - this.h, 0, name, Colors.white, menu_font);
+        draw_outline_text(this.x, this.y - this.text_size[1] / 2, 0, name, Colors.white, menu_font);
 
 		if(this.selected == null)
 		{
-			draw_outline_text(this.x + 2, this.y + 1, 0, "None", Colors.white, menu_font);
+			draw_outline_text(this.x + 2, y + 1, 0, "None", Colors.white, menu_font);
 		}
 		else 
-			draw_outline_text(this.x + 2, this.y + 1, 0, this.values[this.selected], Colors.white, menu_font);
+			draw_outline_text(this.x + 2, y + 1, 0, this.values[this.selected], Colors.white, menu_font);
 
 		if(this.is_open)
 		{
@@ -681,7 +682,7 @@ function ComboBox(tab_name, name, values)
 			for(var i = 0; i < this.values.length;i++)
 			{
 				padding += 15;
-				Render.FilledRect(this.x, this.y + padding, this.w, this.h, MenuStyles.background);
+				Render.FilledRect(this.x, y + padding, this.w, this.h, MenuStyles.background);
 
 				var color;
 				if(this.selected == i)
@@ -691,11 +692,11 @@ function ComboBox(tab_name, name, values)
 				else
 					color = Colors.white
 
-				draw_outline_text(this.x + 2, this.y + padding, 0, String(this.values[i]) , color, menu_font);
+				draw_outline_text(this.x + 2, y + padding, 0, String(this.values[i]) , color, menu_font);
 			}
 			
-			Render.Rect(this.x - 1, this.y + 15 - 1, this.w + 1, padding + 1, Colors.black);
-			Render.Rect(this.x - 1, this.y - 1, this.w + 1, this.h + 1, MenuStyles.theme);
+			Render.Rect(this.x - 1, y + 15 - 1, this.w + 1, padding + 1, Colors.black);
+			Render.Rect(this.x - 1, y - 1, this.w + 1, this.h + 1, MenuStyles.theme);
 		}
     }
 
@@ -703,7 +704,7 @@ function ComboBox(tab_name, name, values)
     {
         if(!this.visible) return;
 
-        var in_bounds = input_system.cursor_in_bounds(this.x, this.y, this.w, this.h)
+        var in_bounds = input_system.cursor_in_bounds(this.x, this.y + this.h - this.text_size[1] / 2, this.w, this.h)
 
         if(input_system.is_key_pressed(0x01) && in_bounds)
 		{
@@ -727,11 +728,11 @@ function ComboBox(tab_name, name, values)
 			{
 				padding += 15;
 
-				var in_bounds = input_system.cursor_in_bounds(this.x, this.y + padding, this.w, this.h)
+				var in_bounds = input_system.cursor_in_bounds(this.x, this.y + this.h + padding - this.text_size[1] / 2, this.w, this.h)
 
 				if(in_bounds && input_system.is_key_pressed(0x01))
 				{
-					if(this.selected == i)
+					if(this.selected == i && this.deselectable)
 						this.selected = null;
 					else 
 						this.selected = i;
@@ -745,6 +746,7 @@ function ComboBox(tab_name, name, values)
 
 			}
 		}
+		this.cfg = this.selected;
 
     }
 
@@ -761,7 +763,7 @@ function MultiBox(tab_name, name, values)
     this.values = values;
 	this.selected = [];
 
-	this.value_selected = [];
+	//this.value_selected = ["None"];
 
 	this.type = "multi"
     this.x = 0;
@@ -779,11 +781,14 @@ function MultiBox(tab_name, name, values)
     this.visible = true;
 	this.is_open = false;
 
+	this.padding_height = this.h;
+
 	this.text_start = 0;
-	this.text_end = 15;
+	this.text_end = 16;
 	this.last_update = 0;
 	this.wait = false;
 	
+	this.cfg = [];
 	this.str = "";
     this.setup_positions = function(x, y)
     {
@@ -797,16 +802,16 @@ function MultiBox(tab_name, name, values)
             return;
 
         this.text_size = Render.TextSize(name, menu_font);
+		var y = this.y + this.h - this.text_size[1] / 2;
+        Render.FilledRect(this.x, y, this.w, this.h, MenuStyles.background);
 
-        Render.FilledRect(this.x, this.y, this.w, this.h, MenuStyles.background);
+        Render.Rect(this.x - 1, y - 1, this.w + 1, this.h + 1, Colors.black);
 
-        Render.Rect(this.x - 1, this.y - 1, this.w + 1, this.h + 1, Colors.black);
-
-        draw_outline_text(this.x, this.y - this.h, 0, name, Colors.white, menu_font);
+        draw_outline_text(this.x, this.y - this.text_size[1] / 2, 0, name, Colors.white, menu_font);
 
 		if(this.selected.length == 0)
 		{
-			draw_outline_text(this.x + 2, this.y + 1, 0, "None", Colors.white, menu_font);
+			draw_outline_text(this.x + 2, y + 1, 0, "None", Colors.white, menu_font);
 		}
 		else 
 		{		
@@ -823,22 +828,22 @@ function MultiBox(tab_name, name, values)
 					this.last_update = Date.now();
 
 					
-					if(this.text_start == 1 && this.text_end == 16)
+					if(this.text_start == 1 && this.text_end == 17)
 						this.last_update = Date.now() + 1200;
 				}
 				if(this.text_end > String(this.selected).length)
 				{
 					this.text_start = 0;
-					this.text_end = 15;
+					this.text_end = 16;
 					this.last_update = Date.now() + 1200;
 				}
-				draw_outline_text(this.x + 2, this.y + 1, 0, this.str, Colors.white, menu_font);
+				draw_outline_text(this.x + 2, y + 1, 0, this.str, Colors.white, menu_font);
 			}
 			else 
 			{
 				this.text_start = 0;
-				this.text_end = 15;
-				draw_outline_text(this.x + 2, this.y + 1, 0, str, Colors.white, menu_font);
+				this.text_end = 16;
+				draw_outline_text(this.x + 2,y + 1, 0, str, Colors.white, menu_font);
 			}
 
 			
@@ -849,7 +854,7 @@ function MultiBox(tab_name, name, values)
 			for(var i = 0; i < this.values.length;i++)
 			{
 				padding += 15;
-				Render.FilledRect(this.x, this.y + padding, this.w, this.h, MenuStyles.background);
+				Render.FilledRect(this.x, y + padding, this.w, this.h, MenuStyles.background);
 
 				var color;
 				if(contains(this.selected,this.values[i]))
@@ -859,11 +864,11 @@ function MultiBox(tab_name, name, values)
 				else
 					color = Colors.white
 
-				draw_outline_text(this.x + 2, this.y + padding, 0, String(this.values[i]) , color, menu_font);
+				draw_outline_text(this.x + 2, y + padding, 0, String(this.values[i]) , color, menu_font);
 			}
 			
-			Render.Rect(this.x - 1, this.y + 15 - 1, this.w + 1, padding + 1, Colors.black);
-			Render.Rect(this.x - 1, this.y - 1, this.w + 1, this.h + 1, MenuStyles.theme);
+			Render.Rect(this.x - 1, y + 15 - 1, this.w + 1, padding + 1, Colors.black);
+			Render.Rect(this.x - 1, y - 1, this.w + 1, this.h + 1, MenuStyles.theme);
 		}
     }
 
@@ -871,7 +876,7 @@ function MultiBox(tab_name, name, values)
     {
         if(!this.visible) return;
 
-        var in_bounds = input_system.cursor_in_bounds(this.x, this.y, this.w, this.h)
+        var in_bounds = input_system.cursor_in_bounds(this.x, this.y + this.h - this.text_size[1] / 2, this.w, this.h)
 
         if(input_system.is_key_pressed(0x01) && in_bounds)
 		{
@@ -900,7 +905,7 @@ function MultiBox(tab_name, name, values)
 			{
 				padding += 15;
 
-				var in_bounds = input_system.cursor_in_bounds(this.x, this.y + padding, this.w, this.h)
+				var in_bounds = input_system.cursor_in_bounds(this.x, this.y + this.h + padding - this.text_size[1] / 2, this.w, this.h)
 
 				if(in_bounds && input_system.is_key_pressed(0x01))
 				{
@@ -923,9 +928,11 @@ function MultiBox(tab_name, name, values)
 				{
 					this.hovered_element = i;
 				}
-
+				this.cfg = this.selected;
 			}
 		}
+		this.cfg = this.selected;
+	
 
     }
 
@@ -935,7 +942,7 @@ function MultiBox(tab_name, name, values)
     }
 }
 
-function Slider(tab_name, name, min_val, max_val)
+function Slider(tab_name, name, min_val, max_val, sign)
 {
     this.tab = tab_name;
     this.name = name;
@@ -951,15 +958,21 @@ function Slider(tab_name, name, min_val, max_val)
     this.w = 90;
     this.h = 10;
 
+	this.sign = sign;
+
 	this.type = "slider"
     this.slider_x = this.x;
 
     this.hovering = false;
     this.text_size = 0;
-    this.padding = 35;
+    this.padding = 30;
+
+	this.padding_height = this.h * 1.8;
 
     this.visible = true;
     this.dragging = false;
+	this.cfg = min_val;
+	this.text = String(this.value);
 
     this.setup_positions = function(x, y)
     {
@@ -975,18 +988,27 @@ function Slider(tab_name, name, min_val, max_val)
             return;
 
         this.clamp_slider();
-        this.text_size = Render.TextSize(name, menu_font);
-        number_size = Render.TextSize(String(this.value), menu_font)
-        Render.FilledRect(this.x, this.y, this.w, this.h, MenuStyles.background);
 		
-        Render.FilledRect(this.x, this.y, this.slider_x - this.x, this.h, MenuStyles.theme)
-        Render.Rect(this.x - 1, this.y - 1, this.w + 1, this.h + 1, Colors.black);
+		this.text = String(this.value) + sign;
+        this.text_size = Render.TextSize(name, menu_font);
+        number_size = Render.TextSize(this.text, menu_font)
 
-        Render.FilledRect(this.slider_x, this.y, 5, 10, Colors.white);
+		var y = this.y + this.h;
 
-        draw_outline_text(this.x, this.y - this.h - this.text_size[1] / 2, 0, name, Colors.white, menu_font);
-        
-        draw_outline_text(this.x + this.w + 2 + number_size[0] * 0.35, this.y - 2, 0, String(this.value), Colors.white, menu_font);
+        Render.FilledRect(this.x, y, this.w, this.h, MenuStyles.background);
+		
+        Render.FilledRect(this.x, y, this.slider_x - this.x, this.h, MenuStyles.theme)
+        Render.Rect(this.x - 1, y - 1, this.w + 1, this.h + 1, Colors.black);
+
+        Render.FilledRect(this.slider_x, y, 5, 10, Colors.white);
+		
+		var border = this.x + this.w;
+		if(this.slider_x + 5 > this.x + this.w)
+			border = this.slider_x + 5;
+
+        draw_outline_text(this.x, this.y - this.text_size[1] / 2, 0, name, Colors.white, menu_font);
+    
+        draw_outline_text(border + 2, y - 2, 0, this.text, Colors.white, menu_font);
     }
 
     this.clamp_slider = function()
@@ -1001,7 +1023,13 @@ function Slider(tab_name, name, min_val, max_val)
     {
         if(!this.visible || ((menu.focus && menu.focus.is_open) || menu.was_focus_opened)) return;
 
-        var in_bounds = input_system.cursor_in_bounds(this.x, this.y, this.w, this.h)
+        var in_bounds = input_system.cursor_in_bounds(this.x, this.y + this.text_size[1], this.w, this.h)
+
+		if(this.value != 0 && this.slider_x == this.x)
+		{	
+		
+			this.slider_x = (this.value - this.min_val) / (this.max_val - this.min_val) * this.w + this.x
+		}
 
         if ( !input_system.is_key_down( 0x01 ) )
 		{
@@ -1026,6 +1054,7 @@ function Slider(tab_name, name, min_val, max_val)
             this.clamp_slider();
 
             this.value = (this.min_val + ( (this.slider_x - this.x) / this.w ) * (this.max_val - this.min_val)).toFixed(0);
+			this.cfg = this.value;
 		}
     }
     this.set_visibility = function(visibility)
@@ -1034,12 +1063,13 @@ function Slider(tab_name, name, min_val, max_val)
     }
 }
 
-function Keybind(tab_name, name)
+function Keybind(tab_name, name, default_key, allow_modes)
 {
     this.tab = tab_name;
     this.name = name;
 
-    this.key = null;
+    this.key = default_key;
+	this.allow_modes = allow_modes;
 
     this.x = 0;
     this.y = 0;
@@ -1052,9 +1082,11 @@ function Keybind(tab_name, name)
 	this.wait_for_key = false;
 
     this.text_size = 0;
-    this.padding = 20;
+    this.padding = 0;
     this.visible = true;
 
+	this.cfg = default_key;
+	this.padding_height = this.h;
     this.setup_positions = function(x, y)
     {
         this.x = x;
@@ -1114,6 +1146,7 @@ function Keybind(tab_name, name)
 				if(input_system.is_key_pressed(i))
 				{
 					this.key = i;
+					this.cfg = i;
 					this.wait_for_key = false 
 					break;
 				}
@@ -1127,6 +1160,7 @@ function Keybind(tab_name, name)
             this.hovering = true;
         else
             this.hovering = false;
+
     }
 
     this.set_visibility = function(visibility)
@@ -1143,18 +1177,37 @@ menu.add_tab(62, 170, "Ragebot");
 menu.add_tab(62, 190, "Anti-Aim");
 menu.add_tab(62, 210, "Playerlist");
 menu.add_tab(62, 230, "Visuals");
+menu.add_tab(62, 250, "Misc");
+
+var improved_target_selection = menu.add_checkbox("Ragebot", "Improved target selection");
+var dt_improvements = menu.add_combobox("Ragebot" , "DT Improvements" , ["Faster DT", "Better Recharge"], true)
+var dt_recharge_delay = menu.add_slider("Ragebot" , "DT Recharge Delay" , 0, 20, " ticks");
 
 var enable_aa = menu.add_checkbox("Anti-Aim", "Anti-Aim");
+var aa_type = menu.add_combobox("Anti-Aim" , "Anti-Aim Type" , ["Eye yaw" , "Opposite", "Sway"], false, false)
+var aa_dir = menu.add_combobox("Anti-Aim" , "Auto Direction Mode" , ["Freestand", "Reversed"], false, false)
 var anti_bruteforce = menu.add_checkbox("Anti-Aim", "Anti-Bruteforce");
+var aa_reset_chk = menu.add_checkbox("Anti-Aim", "Reset Anti-Aim");
+var aa_reset_slider = menu.add_slider("Anti-Aim" , "Anti-Aim reset time" , 0, 10, "s");
 var evasion = menu.add_checkbox("Anti-Aim", "Evasion");
-var combobox = menu.add_combobox("Anti-Aim" , "Anti-Aim Type" , ["Freestand" , "Opposite", "Wtf" ,"Advanced"], true)
-var aa_reset = menu.add_slider("Anti-Aim" , "Anti-Aim Reset Time" , 0, 10)
-var keybind = menu.add_keybind("Anti-Aim", "Menu hotkey");
+var evasion_slider = menu.add_slider("Anti-Aim" , "Chance to block hit" , 40, 100, "%")
+var aa_jitter = menu.add_combobox("Anti-Aim", "Jitter", ["Synced", "Full"], true)
 
-anti_bruteforce.set_visibility(false);
-evasion.set_visibility(false);
+var show_watermark = menu.add_checkbox("Visuals", "Watermark");
+var show_spectator_list = menu.add_checkbox("Visuals", "Spectator List");
+var show_keybinds = menu.add_checkbox("Visuals", "Show Keybinds");
+var show_indicators = menu.add_checkbox("Visuals", "Show Indicators");
+
+var menu_keybind = menu.add_keybind("Misc", "Menu hotkey", 0x24 , false); // 0x24 == home
+
+aa_reset_chk.set_visibility(false);
+aa_reset_slider.set_visibility(false);
+evasion_slider.set_visibility(false);
+dt_recharge_delay.set_visibility(false);
+
 
 //#endregion
+var menu_was_opened = false;
 
 function render_menu()
 {
@@ -1165,8 +1218,8 @@ function render_menu()
     menu_font = Render.GetFont("Arialbd.ttf", 10, true);
     tab_selected = Render.GetFont("Arialbd.ttf", 22, true);
     logo_font = Render.GetFont("Arialbd.ttf", 25, true);
-
-    if(input_system.is_key_pressed( 0x24 )) 
+	//Cheat.Print(menu_keybind.key)
+    if((input_system.is_key_pressed( menu_keybind.key )) || (input_system.is_key_pressed( 0x24 ) && key_names[menu_keybind.key] == "-")) 
         menu.is_open = !menu.is_open;
 
     if(menu.is_open)
@@ -1174,17 +1227,35 @@ function render_menu()
         menu.drag();
         menu.render();
         menu.handle_children();
+		menu_was_opened = true;
     }
 
-    anti_bruteforce.set_visibility(enable_aa.value);
-    evasion.set_visibility(enable_aa.value);
+	aa_reset_chk.set_visibility(anti_bruteforce.value);
+	aa_reset_slider.set_visibility(aa_reset_chk.value && anti_bruteforce.value);
+	evasion_slider.set_visibility(evasion.value);
+	dt_recharge_delay.set_visibility(contains(dt_improvements.selected,"Better Recharge"));
 
 	draggable_font = Render.GetFont("Arialbd.ttf", 10, true);
-	arrows_font = Render.GetFont("Arialbd.ttf", 20, true);
+	arrows_font = Render.GetFont("Verdana.ttf", 20, true);
 
-	watermark.render();
-	spectator_list.render();
-	keybinds.render();
+	if(show_watermark.value)
+	{
+		UI.SetValue(["Misc.", "Helpers", "General", "Watermark"], 0);
+		watermark.render();
+	}
+
+	if(show_spectator_list.value)
+	{
+		UI.SetValue(["Misc.", "Helpers", "General", "Show spectators"], 0);
+		spectator_list.render();
+	}
+
+	if(show_keybinds.value)
+	{
+		UI.SetValue(["Misc.", "Helpers", "General", "Show keybind states"], 0);
+		keybinds.render();
+	}
+
 }
 
 fix_input = function()
@@ -1201,8 +1272,8 @@ const keybinds = new DraggableUI(5, 400, 120, 15, render_keybinds);
 const FREESTAND = 1;
 const OPPOSITE = -1;
 
-const STARTING_DESYNC = 20;
-const STARTING_AUTO_DIRECTION = FREESTAND;
+const STARTING_DESYNC = 60;
+var STARTING_AUTO_DIRECTION = FREESTAND
 const STARTING_SIDE = 1;
 
 function AAState(auto_direction, side, desync)
@@ -1212,7 +1283,7 @@ function AAState(auto_direction, side, desync)
 	this.desync = desync;
 }
 
-function ShotData(auto_direction, side, desync, max_desync, hit, hitgroup) // the hitbox it hit or null and hit = true or false 
+function ShotData(auto_direction, side, desync, max_desync, tickcount, hit, hitgroup) // the hitbox it hit or null and hit = true or false 
 {
 	this.auto_direction = auto_direction;
 	this.side = side;
@@ -1221,12 +1292,17 @@ function ShotData(auto_direction, side, desync, max_desync, hit, hitgroup) // th
 	this.max_desync = max_desync;
 	this.hitgroup = hitgroup;
 	this.hit = hit;
+	this.tickcount = tickcount;
 
-	if(this.hit == undefined)
+	this.is_main_target = false;
+
+	this.cur_antiaim = 
 	{
-		this.hitgroup = null;
-		this.hit = false;
+		auto_direction : null,
+		side : null,
+		desync : null
 	}
+
 }
 
 function Player(ent_index)
@@ -1234,7 +1310,7 @@ function Player(ent_index)
 	this.ent_index = ent_index;
 	this.desync = STARTING_DESYNC;
 	this.side = 1; // 1 or -1
-	this.auto_direction = FREESTAND; // 1 or -1
+	this.auto_direction = STARTING_AUTO_DIRECTION; // 1 or -1
 
 	this.miss_logs = []; // desync : amount / ? 
 						// side : 1 / -1
@@ -1247,6 +1323,11 @@ function Player(ent_index)
 	this.last_shot_time = 0;
 	this.onshot_counter = 0;
 	this.headshot_counter = 0;
+
+	this.legit_aa_auto_direction = FREESTAND;
+	this.legit_aa_desync = 60;
+	this.legit_aa_side = 1;
+	this.legit_aa_misses = 0;
 
 	this.old_aa_states = [new AAState(STARTING_AUTO_DIRECTION, STARTING_SIDE, STARTING_DESYNC)]; 
 	this.round_start_state = new AAState(STARTING_AUTO_DIRECTION, STARTING_SIDE, STARTING_DESYNC);
@@ -1285,13 +1366,6 @@ player_list = [];
 for(var i = 0; i <= 65;i++)
 	player_list.push(new Player(i));
 
-function set_aa(fake) 
-{
-    AntiAim.SetFakeOffset(0);
-    AntiAim.SetRealOffset(-fake);
-    AntiAim.SetLBYOffset(0);
-}
-
 const Hitboxes = { 
 	head : 0,
 	neck : 1,
@@ -1306,9 +1380,11 @@ const Hitboxes = {
 	right_calf : 10,
 	left_foot : 11, 
 	right_foot : 12,
-	left_arm : 13,
-	right_arm : 14,
-	max : 15
+	left_hand : 13,
+	right_hand : 14,
+	left_arm : 15,
+	right_arm : 17,
+	max : 18
 };
 
 const Hitgroups = { 
@@ -1322,7 +1398,7 @@ const Hitgroups = {
 	right_leg : 7,
 	gear : 10, 
 };
-
+var hitgroup_names = ["body", "head", "chest", "stomach", "left arm", "right arm", "left leg", "right leg", "neck", "?", "gear" ]
 Globals.TicksToTime = function(tick)
 {
 	return Globals.TickInterval() * tick;
@@ -1331,6 +1407,23 @@ Globals.TicksToTime = function(tick)
 Globals.TimeToTicks = function(tick)
 {
 	return Math.floor(0.5 + tick / Globals.TickInterval());
+}
+
+Entity.GetEntitiesByClassName = function(class_name) 
+{
+    const entities = Entity.GetEntities()
+    var list = []
+    for(i in entities) {
+        var classid = Entity.GetClassName(entities[i])
+        if(classid == class_name)
+            list.push(entities[i])
+    }
+    return list
+}
+
+Entity.IsInAir = function(ent)
+{
+	return Entity.GetProp( ent, "CBasePlayer", "m_hGroundEntity");
 }
 
 Entity.GetMaxDesync = function(player) // not 100% accurate but it's not bad and it's the best i've got
@@ -1393,6 +1486,13 @@ Entity.IsVisible = function(ent)
 // Vector and maths
 
 const Vector = { };
+
+Math.randomize = function(min, max) 
+{
+    min = Math.ceil(min);
+    max = Math.floor(max) + 1;
+    return Math.floor(Math.random() * (max - min)) + min;
+}
 
 Math.radian = function(degree) // degree to rad
 {
@@ -1541,62 +1641,35 @@ Vector.closest_point_to_ray = function(target, ray_start, ray_end)
 }
 
 const antiaim = {
-	autodirection: null,
+	auto_direction: null,
 	side : null,
 	desync : null,
 	enemy : null,
 	last_enemy : null,
 	last_local_shot : null,
-	last_bullet_impact : null
+	last_bullet_impact : null,
+	legit_aa_timer : 0,
+	legit_aa : false
 };
 
-antiaim.run_prediction_on_enemy = function(enemy, optimizations)
-{ 
-	const tick_limit = 45
-	var tick_step = 15;
+antiaim.set_aa = function(fake)
+{
+	opposite = aa_type.values[aa_type.selected] == "Opposite"
 
-	if(optimizations > 0)
-		tick_step = 30;
+    AntiAim.SetFakeOffset(0);
+    AntiAim.SetRealOffset(-fake);
+	if(opposite)
+		AntiAim.SetLBYOffset(fake);
+	else 
+    	AntiAim.SetLBYOffset(0);
+}
 
-	const local = Entity.GetLocalPlayer();
-	const velocity = Entity.GetProp(local, "CBasePlayer", "m_vecVelocity[0]");
-	
-	//var trace_bullet = Entity.GetName(Entity.GetWeapon(local)).search("knife") == -1 ? true : false; // if it's not a knife then trace
-
-	const enemy_pos = Entity.GetHitboxPosition(enemy, 3);
-	const local_pos = Entity.GetEyePosition(local);
-
-	const direction = Math.clamp(Vector.sub(enemy_pos , local_pos), -255, 255) // closest way to get to the enemy clamped into max velocity
-
-	var velocities;
-
-	if(optimizations < 2) 
-		velocities = [direction, velocity, [255,0], [0, 255], [-255, 0] , [0, -255]];
-	else if(optimizations == 2)
-		velocities = [direction, velocity];
-
-	var cur_velocity, extrapolated_local, bullet_data;
-
-	for(var ticks = tick_limit; ticks >= 15; ticks -= tick_step)
-	{        
-		for(var i = 0; i < velocities.length; i++)
-		{
-			cur_velocity = [velocities[i][0], velocities[i][1] , velocity[2]];
-			extrapolated_local = Math.extrapolate(local_pos, cur_velocity, ticks)
-
-			bullet_data = Trace.Bullet(local, enemy , extrapolated_local , enemy_pos);
-
-			if(bullet_data && bullet_data[1] > 0)
-			{
-				return true;
-			}
-
-		}
-
-	}
-
-	return false;
-
+antiaim.set_auto_direction = function()
+{
+	if(aa_dir.values[aa_dir.selected] == "Reversed")
+		STARTING_AUTO_DIRECTION = OPPOSITE
+	else
+		STARTING_AUTO_DIRECTION = FREESTAND
 }
 
 antiaim.run_auto_direction = function(enemy)
@@ -1612,12 +1685,12 @@ antiaim.run_auto_direction = function(enemy)
 	var amount_left = 0;
     var amount_right = 0;
 
-	for (var i = -90; i <= 90; i+= 15)
+	for (var i = -60; i <= 60; i+= 1)
 	{
 		if (i != 0)
 		{
 			var fwd = Vector.to_angle([0, angle_to_enemy[1] + i, 0]);
-			fwd = Vector.multiply(fwd, 250)
+			fwd = Vector.multiply(fwd, 50000)
 
 			const trace = Trace.Line(local, local_eye, Vector.add(local_eye, fwd));
 			const fraction = trace[1]
@@ -1649,11 +1722,10 @@ antiaim.run_auto_direction = function(enemy)
 antiaim.get_enemies_by_crosshair = function()
 {
 	var enemies = Entity.GetEnemies();
-	var enemy, enemy_pos, screen_pos, dist;
-	var max_dist = 999999;
+	var enemy, enemy_pos, dist;
 	var enemies_list = {};
 	
-	const screen_size = Vector.div(Render.GetScreenSize() , 2);
+	var view_angles = Local.GetViewAngles();
 
 	for(var i = 0; i < enemies.length ;i++)
 	{
@@ -1662,41 +1734,112 @@ antiaim.get_enemies_by_crosshair = function()
 		if(!enemy || !Entity.IsAlive(enemy) || Entity.IsDormant(enemy)) continue;
 
 		enemy_pos = Entity.GetHitboxPosition(enemy,3);
-
-		screen_pos = Render.WorldToScreen(enemy_pos), dist;
-
-		if(screen_pos && screen_pos[2] == 1)
-			dist = Vector.distance2D(screen_size , screen_pos);
-		else 
-		{
-			dist = max_dist;
-			max_dist -= 1;
-		}
-
-		enemies_list[enemy] = dist;
+		
+		dist = Vector.angle_to(Entity.GetEyePosition(Entity.GetLocalPlayer()), enemy_pos)
+		enemies_list[enemy] = Vector.distance2D(dist,view_angles);
 	}
 
 	var enemy_pairs = Object.keys(enemies_list).map(function(key) { return [key, enemies_list[key]]; } );
-	enemy_pairs.sort(function(first, second) { return second[1] - first[1]; } );
+	enemy_pairs.sort(function(first, second) { return first[1] - second[1]; } );
 	
 	
 	var enemies = [];
 	for(var i = 0; i < enemy_pairs.length;i++)
 		enemies[i] = parseInt(enemy_pairs[i][0]);
-
-	for(var i = 0; i < enemies.length; i++)
-	{
-		if(enemies[i] == antiaim.last_enemy)
-		{
-			const aux = enemies[0];
-			enemies[0] = enemies[i]
-			enemies[i] = aux;
-			break;
-		}
-	}
+	
 	return enemies;
 }
 
+antiaim.set_legit_aa_state = function(state)
+{
+	if(state)
+	{
+		UI.SetValue(["Rage", "Anti Aim", "Directions", "At targets"],0)
+		UI.SetValue(["Config","Cheat","General","Restrictions"],0);
+		UI.SetValue(["Rage","Anti Aim","General","Pitch mode"],0);
+		UI.SetValue(["Rage","Anti Aim","Directions","Yaw offset"],180);
+	}
+	else 
+	{
+		UI.SetValue(["Rage", "Anti Aim", "Directions", "At targets"],1)
+		UI.SetValue(["Config","Cheat","General","Restrictions"],1);
+		UI.SetValue(["Rage","Anti Aim","General","Pitch mode"],1);
+		UI.SetValue(["Rage","Anti Aim","Directions","Yaw offset"],0);
+	}
+}
+
+antiaim.run_legit_aa = function()
+{
+	var buttons = UserCMD.GetButtons();
+	var local = Entity.GetLocalPlayer();
+
+	var hostages = Entity.GetEntitiesByClassName("CHostage");
+	var hostage_found = false;
+
+	for(var i = 0 ; i < hostages.length;i++)
+	{
+		if(Vector.distance(Entity.GetRenderOrigin(hostages[i]) , Entity.GetRenderOrigin(local)) < 100)
+			hostage_found = true;
+	}
+
+	if(buttons & (1 << 5) && !hostage_found)
+	{
+		antiaim.set_legit_aa_state(true)
+
+		if(antiaim.legit_aa_timer >= 5) // if hold E for more than 5 ticks then use AA this is made so you can still defuse
+		{
+			
+			UserCMD.SetButtons((buttons & ~(1 << 5))) // use = false 
+			
+			if(antiaim.enemy && Entity.IsAlive(antiaim.enemy))
+			{
+				antiaim.set_aa(player_list[antiaim.enemy].legit_aa_desync * player_list[antiaim.enemy].legit_aa_side);
+			}
+
+			antiaim.legit_aa = true;
+
+		}
+		antiaim.legit_aa_timer++;
+	}
+	else
+	{
+		antiaim.legit_aa_timer = 0; // reset tick timer
+		antiaim.legit_aa = false;
+
+		antiaim.set_legit_aa_state(false)
+	}
+}
+
+antiaim.is_vulnerable = function()
+{
+	const enemies = Entity.GetEnemies();
+	const local = Entity.GetLocalPlayer();
+	const local_pos = Entity.GetHitboxPosition(local, 0);
+
+	if(!local || !Entity.IsAlive(local)) return false;
+
+	if(Ragebot.GetTarget() != 0) return true;
+
+	for(var i = 0; i < enemies.length;i++)
+	{
+		const enemy = enemies[i];
+
+		if(!Entity.IsValid(enemy) && !Entity.IsAlive(enemy) && Entity.IsDormant(enemy)) continue;
+
+		const enemy_pos = Entity.GetEyePosition(enemy);
+
+		const bullet_data = Trace.Bullet(enemy, local, enemy_pos, local_pos)
+
+		if(bullet_data && bullet_data[1] > 15)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+var last_side = 1;
+var last_invert = 0;
 antiaim.run_antiaim = function()
 {
 	if(enable_aa.value)
@@ -1713,38 +1856,26 @@ antiaim.run_antiaim = function()
 	var enemies = antiaim.get_enemies_by_crosshair() // this returns alive enemies by crosshair
 	var found_enemy = false;
 	
-	const ragebot_target = Ragebot.GetTarget();
-	const should_optimize = (enemies.length >= 4) + (enemies.length >= 8); // aka if more than 4 enemies optimize = 1 if more than or 8 enemies then == 2 so run more optimizations
-
-	if(ragebot_target)
+	for(var i = 0; i < enemies.length;i++)
 	{
-		antiaim.enemy = ragebot_target;
-		antiaim.last_enemy = ragebot_target;
-		found_enemy = true;
+		var enemy = enemies[i];
+		if(player_list[enemy].onshot_counter >= 2)
+			Entity.DrawFlag(enemy, "ONSHOTTER", [255,255,255,255])
 	}
-	else 
+
+	antiaim.set_auto_direction(); // this updates auto direction based on the value you have in the combobox
+
+	for(var i = 0; i < enemies.length && !found_enemy;i++)
 	{
-		var enemy;
-	
-		for(var i = 0; i < enemies.length && !found_enemy;i++)
+		var enemy = enemies[i];
+		if(enemy && Entity.IsAlive(enemy) && !Entity.IsDormant(enemy))
 		{
-			enemy = enemies[i];
-			if(enemy && Entity.IsAlive(enemy) && !Entity.IsDormant(enemy))
-			{
-				
-				hit_enemy = antiaim.run_prediction_on_enemy(enemy, should_optimize);
-
-				if(hit_enemy)
-				{
-					antiaim.enemy = enemy;
-					antiaim.last_enemy = enemy;
-					found_enemy = true;
-				}
-
-			}
+			antiaim.enemy = enemy;
+			antiaim.last_enemy = enemy;
+			found_enemy = true;
 		}
 	}
-
+	
 	if(!found_enemy)
 	{
 		antiaim.enemy = null 
@@ -1760,18 +1891,65 @@ antiaim.run_antiaim = function()
 			player_list[antiaim.enemy].side = antiaim.run_auto_direction(antiaim.enemy);
 			var enemy_data = player_list[antiaim.enemy];
 
+			player_list[antiaim.enemy].legit_aa_side = enemy_data.side * player_list[antiaim.enemy].auto_direction * player_list[antiaim.enemy].legit_aa_auto_direction * -1 // we multiply by auto_direction to nullify when we multiplied by it in freestand
+
+			if(antiaim.legit_aa)
+			{
+				antiaim.side = player_list[antiaim.enemy].legit_aa_side
+				antiaim.desync = player_list[antiaim.enemy].legit_aa_desync
+			}
+			else 
+			{
+				antiaim.side = enemy_data.side;
+				antiaim.desync = enemy_data.desync;
+			}
+			
+			antiaim.set_aa(antiaim.side * antiaim.desync);
+		}
+		else 
+		{
+			var enemy_data = player_list[antiaim.enemy];
+
 			antiaim.side = enemy_data.side;
 			antiaim.desync = enemy_data.desync;
+			
+			antiaim.set_aa(antiaim.side * antiaim.desync)
 		}
-		//Cheat.Print(antiaim.side + "\n")
-		set_aa(antiaim.side * antiaim.desync)
-	}
 
-	for(var i = 0; i < enemies.length;i++)
-	{
-		enemy = enemies[i];
-		if(player_list[enemy].onshot_counter >= 2)
-			Entity.DrawFlag(antiaim.enemy, "ONSHOTTER", [255,255,255,255])
+		antiaim.auto_direction = enemy_data.auto_direction;
+
+
+		if(Globals.Tickcount() - enemy_data.last_shot_at_us >= 64 * aa_reset_slider.value) // dodge timer passed
+		{
+			if(contains(aa_jitter.selected,"Full") && antiaim.is_vulnerable())
+			{
+				antiaim.desync = 60;
+				if(Globals.Tickcount() - last_invert > 3)
+				{
+					last_side = -last_side;
+					last_invert = Globals.Tickcount();
+				}
+				antiaim.set_aa(last_side * antiaim.desync);
+			//	Cheat.Print(String(last_side * antiaim.desync) + "\n")
+				
+			}
+			else if(contains(aa_jitter.selected,"Synced"))
+			{
+				antiaim.desync = 60;
+				if(Globals.Tickcount() - last_invert > 3)
+				{
+					if(antiaim.side == -1)
+						antiaim.desync = antiaim.desync - 45;
+					else
+						antiaim.desync = antiaim.desync - 30;
+					last_invert = Globals.Tickcount();
+				}
+				antiaim.set_aa(antiaim.side * antiaim.desync);
+				// Cheat.Print("Synced\n")
+			}
+		}
+		
+		
 	}
 
 }
@@ -1783,7 +1961,7 @@ antiaim.on_player_hurt = function()
  	const attacker = Entity.GetEntityFromUserID(Event.GetInt("attacker"));
 	const victim = Entity.GetEntityFromUserID(Event.GetInt("userid"));
 
-	const dmg = Entity.GetEntityFromUserID(Event.GetInt("dmg"));
+	const dmg = Event.GetInt("dmg_health");
 	const remaining_health = Event.GetInt("health");
 
     if (victim != Entity.GetLocalPlayer() || victim == attacker) return;
@@ -1800,56 +1978,74 @@ antiaim.on_player_hurt = function()
 	if(Globals.Tickcount() - antiaim.last_local_shot <= 15 && hitgroup == Hitgroups.head) // aka last time local shot
 	{
 		player_list[attacker].onshot_counter += 1;
+		Cheat.PrintColor([230, 104, 44, 255], "[phoenix] ");
 		Cheat.Print(Entity.GetName(attacker) + " onshotted us! \n")
 		return; // we got onshotted hurray.. we don't care about other shit 
 	}
 
-	if(remaining_health > 0 && player_list[attacker].shot_logs[last_shot]) // we're still alive so bullet_impact registered
+	var found_shot = false;
+
+	for(var i = 0; i < player_list[attacker].shot_logs.length && !found_shot;i++)
 	{
-		player_list[attacker].shot_logs[last_shot].hit = true;
-		player_list[attacker].shot_logs[last_shot].hitgroup = hitgroup;
-
-		// set aa to the state before anti bruteforce because this shot hit
-		player_list[attacker].desync = last_aa_state.desync;
-		player_list[attacker].auto_direction = last_aa_state.auto_direction;
-		player_list[attacker].side = last_aa_state.side;
+		var shot = player_list[attacker].shot_logs[i];
+		if(Globals.Tickcount() - shot.tickcount < 2 && !shot.hit)
+		{
+			player_list[attacker].shot_logs[i].hitgroup = hitgroup;
+			player_list[attacker].shot_logs[i].hit = true;
+			found_shot = true;
+			
+			player_list[attacker].desync = shot.cur_antiaim.desync;
+			player_list[attacker].side = shot.cur_antiaim.side;
+			player_list[attacker].auto_direction = shot.cur_antiaim.auto_direction;
+			//Cheat.Print("Got this far\n");
+			break;
+		}
 	}
-	else
+
+	if(!found_shot)
 	{
-		player_list[attacker].shot_logs.push(new ShotData(enemy_data.auto_direction, enemy_data.side, enemy_data.desync, Entity.GetMaxDesync(local)), true, hitgroup);
+		var shot = new ShotData(enemy_data.auto_direction, enemy_data.side, enemy_data.desync, Entity.GetMaxDesync(local), Globals.Tickcount(), true, hitgroup);
+
+		shot.cur_antiaim.auto_direction = antiaim.auto_direction
+		shot.cur_antiaim.side = antiaim.side
+		shot.cur_antiaim.desync = antiaim.desync
+	
+		shot.is_main_target = enemy_data.ent_index == antiaim.enemy;
+
+		player_list[attacker].shot_logs.push(shot);
 	}
 
-
+	if(hitgroup != Hitgroups.generic)
+	{
+		Cheat.PrintColor([230, 104, 44, 255], "[phoenix] ");
+		Cheat.Print(Entity.GetName(attacker) + " shot our " + hitgroup_names[hitgroup] + " | SIDE: " + antiaim.side + " | DESYNC: " + antiaim.desync + " | AUTO-DIRECTION: " + (antiaim.auto_direction == FREESTAND ? "FREESTAND" : "OPPOSITE") + "\n")
+	}
+	
     if (hitgroup == Hitgroups.head || hitgroup == Hitgroups.left_leg || hitgroup == Hitgroups.right_leg)  //head, both toe
     {
+		//Cheat.Print("Works\n");
 		if(hitgroup == Hitgroups.head)
 			player_list[attacker].headshot_counter += 1;
 
         player_list[attacker].auto_direction = -player_list[attacker].auto_direction;
 		player_list[attacker].side = -player_list[attacker].side;
 
-		if(player_list[attacker].desync < 47)
-			player_list[attacker].desync = 60;
-		else 
-			player_list[attacker].desync = 20;
-
-		//Cheat.Print(String(-old_aa_state.auto_direction) + "\n")
-		player_list[attacker].round_start_state = new AAState(player_list[attacker].auto_direction, player_list[attacker].side, player_list[attacker].desync)
+	//	player_list[attacker].round_start_state = new AAState(player_list[attacker].auto_direction, player_list[attacker].side, player_list[attacker].desync)
     }
-    else 
+    else if(hitgroup != Hitgroups.generic)
     {
-		if(dmg < 40)
-		{
-			player_list[attacker].desync = 3;
-		}
-		else if(evasion.value) // if evasion checkbox run the shit
+		// Cheat.Print("Works2\n");
+		if(evasion.value && dmg > (remaining_health + dmg) * evasion_slider.value / 100) // if evasion checkbox run the shit
 		{
 			player_list[attacker].desync = 60;
 			player_list[attacker].auto_direction = -player_list[attacker].auto_direction;
-			player_list[attacker].side = -player_list[attacker].auto_direction;
+			player_list[attacker].side = -player_list[attacker].side;
 
 			player_list[attacker].evasion_timer = Globals.Tickcount() + 64 * 10; // evasion for 10s for indicator
+			//Cheat.Print("evasion\n")
 		}
+		//Cheat.Print(String(dmg) + "\n")
+		//Cheat.Print(String((remaining_health + dmg) * evasion_slider.value / 100) + "\n")
     }
 
 }
@@ -1875,91 +2071,57 @@ antiaim.on_bullet_impact = function()
     {
         const source = Entity.GetEyePosition(enemy);
 
-        const local_origin = Entity.GetProp(local, "CBaseEntity", "m_vecOrigin");
-		const local_body = Entity.GetHitboxPosition(local, 3)
 
-		const body_vec = Vector.closest_point_to_ray(local_body, source, impact);
-        const body_dist = Vector.distance(local_body, body_vec);
-		
-		const left_arm_pos = Entity.GetHitboxPosition(local, Hitboxes.left_arm)
-		const right_arm_pos = Entity.GetHitboxPosition(local, Hitboxes.right_arm)
-      
-
-        if (body_dist < 80.0)  // shot near us
+		const head_pos = Entity.GetHitboxPosition(local, 0)
+		const head_vec = Vector.closest_point_to_ray(head_pos, source, impact);
+		const head_dist = Vector.distance(head_pos, head_vec);
+        if (head_dist < 50.0)  // shot near us
         {
-			const head_pos = Entity.GetHitboxPosition(local, 0)
-            const head_vec = Vector.closest_point_to_ray(head_pos, source, impact);
-            const head_dist = Vector.distance(head_pos, head_vec);
-
-            const feet_vec = Vector.closest_point_to_ray(local_origin, source, impact);
-            const feet_dist = Vector.distance(local_origin, feet_vec);
-
-			const left_arm_vec = Vector.closest_point_to_ray(left_arm_pos, source, impact);
-            const left_arm_dist = Vector.distance(left_arm_pos, left_arm_vec);
-
-			const right_arm_vec = Vector.closest_point_to_ray(right_arm_pos, source, impact);
-            const right_arm_dist = Vector.distance(right_arm_pos, right_arm_vec);
-
-
-         //   var closest_ray_point = null;
 			var enemy_data = player_list[enemy];
 
-			player_list[enemy].shot_logs.push(new ShotData(enemy_data.auto_direction, enemy_data.side, enemy_data.desync, Entity.GetMaxDesync(local)));
-			
-            if (body_dist < head_dist && body_dist < feet_dist)     //that's a pelvis
-            {                                                  
-                closest_ray_point = body_vec;
-				return;
-			}
+			var shot = new ShotData(enemy_data.auto_direction, enemy_data.side, enemy_data.desync, Entity.GetMaxDesync(local), Globals.Tickcount(), false, -1);
 
-		//	antiaim.last_bullet_impact = tickcount;
+			shot.cur_antiaim.auto_direction = antiaim.auto_direction
+			shot.cur_antiaim.side = antiaim.side
+			shot.cur_antiaim.desync = antiaim.desync
 			
+			shot.is_main_target = enemy_data.ent_index == antiaim.enemy;
+
+			player_list[enemy].shot_logs.push(shot);
 
             player_list[enemy].old_aa_states.push(new AAState(enemy_data.auto_direction, enemy_data.side, enemy_data.desync));
-			
-
+		//	Cheat.Print("Am tras in mortii tai.\n")
 			// arms get inversed due to being backwards
-            if(left_arm_dist < right_arm_dist) // right_arm is closer
+			if(!antiaim.legit_aa) // use this smart anti-bruteforce if we don't have legit aa 
 			{
-				if(antiaim.side == 1) // desync is right side
-				{
-					player_list[enemy].side = -player_list[enemy].side;
-					player_list[enemy].auto_direction = -player_list[enemy].auto_direction;
-				}
-				else // desync is left side this means he shot near our real so change desync
-				{
-					if(antiaim.desync > 47)
-						player_list[enemy].desync = 20 
-					else 
-						player_list[enemy].desync = 60;
-				}
-			}
-			else // left_arm is closer
-			{
-				if(antiaim.side == 1) // desync is right side this means he shot near our real so swap sides
-				{
-					if(antiaim.desync > 47)
-						player_list[enemy].desync = 20 
-					else 
-						player_list[enemy].desync = 60;
-				}
-				else // desync is left side 
-				{
-					player_list[enemy].side = -player_list[enemy].side;
-					player_list[enemy].auto_direction = -player_list[enemy].auto_direction; 
-				}
-			}
+				player_list[enemy].side = -antiaim.side;
+				player_list[enemy].auto_direction = -antiaim.auto_direction;
 
-			enemy_data = player_list[enemy];
-			player_list[enemy].round_start_state = new AAState(enemy_data.auto_direction, enemy_data.side, enemy_data.desync)
-			
+				enemy_data = player_list[enemy];
+				//player_list[enemy].round_start_state = new AAState(enemy_data.auto_direction, enemy_data.side, enemy_data.desync)
+			}
 			player_list[enemy].last_shot_at_us = tickcount;
 
         }
         player_list[enemy].last_bullet_impact = tickcount;
     }
 }
-
+antiaim.reset_after = function()
+{
+	if(aa_reset_chk.value)
+	{
+		for(var i = 0; i < player_list.length;i++) 
+		{
+			var time_passed = Globals.TicksToTime(Globals.Tickcount() - player_list[i].last_shot_at_us).toFixed(1);
+			if(time_passed > aa_reset_slider.value)
+			{
+				player_list[i].auto_direction = STARTING_AUTO_DIRECTION;
+				player_list[i].side = STARTING_SIDE
+				player_list[i].desync = STARTING_DESYNC;
+			}
+		}
+	}
+}
 antiaim.on_round_start = function()
 {
 	for(var i = 0; i < player_list.length;i++) 
@@ -1969,8 +2131,29 @@ antiaim.on_round_start = function()
 		player_list[i].auto_direction = state.auto_direction;
 		player_list[i].side = state.side;
 		player_list[i].desync = state.desync;
+		player_list[i].evasion_timer = Globals.Tickcount();
     }
 }
+
+antiaim.bomb_begin_defuse = function()
+{
+    if(Entity.IsLocalPlayer(Entity.GetEntityFromUserID(Event.GetInt("userid"))))
+        antiaim.legit_aa_timer = -9999
+}
+antiaim.bomb_abort_defuse = function()
+{
+    if(Entity.IsLocalPlayer(Entity.GetEntityFromUserID(Event.GetInt("userid"))))
+        antiaim.legit_aa_timer = 0
+}
+antiaim.bomb_defused = function()
+{
+    if(Entity.IsLocalPlayer(Entity.GetEntityFromUserID(Event.GetInt("userid"))))
+        antiaim.legit_aa_timer = 0
+}
+
+Cheat.RegisterCallback("bomb_begindefuse", "antiaim.bomb_begin_defuse");
+Cheat.RegisterCallback("bomb_abortdefuse", "antiaim.bomb_abort_defuse");
+Cheat.RegisterCallback("bomb_defused", "antiaim.bomb_defused");
 
 antiaim.draw = function()
 {	
@@ -1979,41 +2162,222 @@ antiaim.draw = function()
 	const local = Entity.GetLocalPlayer();
 	const center = Vector.div(Render.GetScreenSize(), 2);
     const color = [230, 104, 44,255]
+	
+	var side = antiaim.side;
 
-	if(antiaim.side != null && local && Entity.IsAlive(local) && antiaim.enemy && Entity.IsAlive(antiaim.enemy))
-	{
-		Render.String(center[0] - 25,center[1] - 13,1,"<", antiaim.side == 1 ? [255,255,255,255] : color, arrows_font);
-		Render.String(center[0] + 25,center[1] - 13,1,">", antiaim.side == -1 ? [255,255,255,255] : color, arrows_font);
+	arrows_font = Render.GetFont("Tahoma.ttf", 25, true);
+	draggable_font = Render.GetFont("Arialbd.ttf", 10, true);
+	doubletap = UI.GetValue(["Rage", "Exploits", "Keys", "Key assignment", "Double tap"]);
+	hideshots = UI.GetValue(["Rage", "Exploits", "Keys", "Key assignment", "Hide shots"]);
 
-		draw_outline_text( center[0] , center[1] + 13, 1, "ideal yaw" , [ 255, 255, 255, 255 ], draggable_font);
+	if(antiaim.legit_aa)
+		side = -side;
 
-		const last_shot_at_us = player_list[antiaim.enemy].last_shot_at_us;
-
-		var y = center[1] + 26;
-
-		if(Globals.Tickcount() - last_shot_at_us <= 64 * 10) // 10s
+	if(show_indicators.value)
+		if(antiaim.side != null && local && Entity.IsAlive(local) && antiaim.enemy && Entity.IsAlive(antiaim.enemy))
 		{
-			draw_outline_text( center[0] , y, 1, "dodge (" +  (10 - Globals.TicksToTime(Globals.Tickcount() - last_shot_at_us)).toFixed(1) + "s)", [ 255, 255, 255, 255 ], draggable_font);
-			y += 13;
+			Render.String(center[0] - 40,center[1] - 17,1,"<", side == -1 ? [255,255,255,255] : color, arrows_font);
+			Render.String(center[0] + 40,center[1] - 17,1,">", side == 1 ? [255,255,255,255] : color, arrows_font);
+
+			draw_outline_text( center[0] , center[1] + 13, 1, "ideal" , [ 255, 255, 255, 255 ], draggable_font);
+		}
+		else if(local && Entity.IsValid(local) && Entity.IsAlive(local))
+		{
+			Render.String(center[0] - 40,center[1] - 17,1,"<",  [255,255,255,255], arrows_font);
+			Render.String(center[0] + 40,center[1] - 17,1,">",  [255,255,255,255], arrows_font);
+
+			draw_outline_text( center[0] , center[1] + 13, 1, "neutral" , [ 255, 255, 255, 255 ], draggable_font);
+		}
+		if(local && Entity.IsAlive(local))
+		{
+			var y = center[1] + 26;
+
+			if(antiaim.legit_aa)
+			{
+				draw_outline_text( center[0] , center[1] + 26, 1, "legit aa" , [ 255, 255, 255, 255 ], draggable_font);
+				y += 13;
+			}
+
+			if( antiaim.enemy && Entity.IsAlive(antiaim.enemy))
+			{
+				const last_shot_at_us = player_list[antiaim.enemy].last_shot_at_us;
+
+				if(Globals.Tickcount() - last_shot_at_us <= 64 * aa_reset_slider.value) // slider's value
+				{
+					draw_outline_text( center[0] , y, 1, "dodge (" +  (aa_reset_slider.value - Globals.TicksToTime(Globals.Tickcount() - last_shot_at_us)).toFixed(1) + "s)", [ 255, 255, 255, 255 ], draggable_font);
+					y += 13;
+				}
+		
+				if(player_list[antiaim.enemy].evasion_timer >= Globals.Tickcount() && player_list[antiaim.enemy].evasion_timer != null) // evasion indicator hasn't expired so render it
+				{
+					draw_outline_text( center[0] , y, 1, "evasion (" +  (10 - Globals.TicksToTime(player_list[antiaim.enemy].evasion_timer - Globals.Tickcount())).toFixed(1) + "s)" , [ 255, 255, 255, 255 ], draggable_font);
+					y += 13;
+				}
+			}
+
+			if(doubletap)
+			{
+				draw_outline_text( center[0] , y, 1, "doubletap" , [ 255, 255, 255, 255 ], draggable_font);
+				y += 13;
+			}
+			
+			if(hideshots)
+				draw_outline_text( center[0] , y, 1, "onshot" , [ 255, 255, 255, 255 ], draggable_font);	
 		}
 
-		if(player_list[antiaim.enemy].evasion_timer >= Globals.Tickcount() && player_list[antiaim.enemy].evasion_timer != null) // evasion indicator hasn't expired so render it
-			draw_outline_text( center[0] , y, 1, "evasion (" +  (10 - Globals.TicksToTime(player_list[antiaim.enemy].evasion_timer - Globals.Tickcount())).toFixed(1) + "s)" , [ 255, 255, 255, 255 ], draggable_font);
+}
 
-	}
-	else if(Entity.IsAlive(local))
+const ragebot = 
+{
+	started_recharging : false,
+	last_recharge : 0,
+	automatic_recharge : true
+}
+
+ragebot.faster_dt = function()
+{
+	if(contains(dt_improvements.selected, "Faster DT"))
 	{
-		Render.String(center[0] - 25,center[1] - 13,1,"<",  [255,255,255,255], arrows_font);
-		Render.String(center[0] + 25,center[1] - 13,1,">",  [255,255,255,255], arrows_font);
-
-		draw_outline_text( center[0] , center[1] + 13, 1, "dynamic" , [ 255, 255, 255, 255 ], draggable_font);
+		Convar.SetInt("cl_clock_correction", 0);
+		Convar.SetInt("sv_maxusrcmdprocessticks", 18);
+		Exploit.OverrideTolerance(0);
+		Exploit.OverrideShift(16);
 	}
 }
 
-//#region Callbacks
+ragebot.can_shift_shot = function(ticks_to_shift) 
+{
+    var me = Entity.GetLocalPlayer();
+    var wpn = Entity.GetWeapon(me);
+
+    if (me == null || wpn == null)
+        return false;
+
+    var tickbase = Entity.GetProp(me, "CCSPlayer", "m_nTickBase");
+    var curtime = Globals.TickInterval() * (tickbase-ticks_to_shift)
+
+    if (curtime < Entity.GetProp(me, "CCSPlayer", "m_flNextAttack"))
+        return false;
+
+    if (curtime < Entity.GetProp(wpn, "CBaseCombatWeapon", "m_flNextPrimaryAttack"))
+        return false;
+
+    return true;
+}
+
+ragebot.faster_recharge = function()
+{
+	if(!contains(dt_improvements.selected, "Better Recharge")) 
+	{
+		ragebot.automatic_recharge = true;
+		Exploit.EnableRecharge(); return;
+	}
+	else if(ragebot.automatic_recharge)  
+	{
+		Exploit.DisableRecharge();
+		ragebot.automatic_recharge = false;
+	}
+
+	const charge = Exploit.GetCharge()
+	const is_charged = charge == 1;
+	
+	if(is_charged) 
+	{
+		ragebot.started_recharging = false; return;
+	}
+
+	const will_get_hit = ragebot.can_get_hit()
+	if(will_get_hit || Ragebot.GetTarget() != 0) return;
+
+	if(!ragebot.started_recharging && ragebot.can_shift_shot(dt_recharge_delay.value)) 
+	{	
+		
+		Exploit.Recharge();
+
+		ragebot.started_recharging = true;
+		ragebot.last_recharge = Globals.Tickcount();
+	}
+	
+}
+
+ragebot.can_get_hit = function()
+{
+	const enemies = Entity.GetEnemies();
+	const local = Entity.GetLocalPlayer();
+	const body = Entity.GetHitboxPosition(local, 2);
+
+	if(!local || !Entity.IsAlive(local)) return false;
+
+	if(Ragebot.GetTarget() != 0) return true;
+
+	for(var i = 0; i < enemies.length;i++)
+	{
+		const enemy = enemies[i];
+
+		if(!Entity.IsValid(enemy) && !Entity.IsAlive(enemy) && Entity.IsDormant(enemy)) continue;
+
+		const enemy_pos = Entity.GetEyePosition(enemy);
+		const velocity = Entity.GetProp(local, "CBasePlayer", "m_vecVelocity[0]");
+		const enemy_velocity = Entity.GetProp(enemy, "CBasePlayer", "m_vecVelocity[0]");
+
+		const extrapolated_enemy = Math.extrapolate(enemy_pos, enemy_velocity, 14);
+		const extrapolated_local = Math.extrapolate(body, velocity, 16);
+
+		const bullet_data = Trace.RawLine(enemy,extrapolated_enemy,extrapolated_local,0x4600400b,0);
+
+		if(bullet_data[0] == local)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+ragebot.improved_target_selection = function()
+{
+	if(!improved_target_selection.value) return;
+
+	const enemies = Ragebot.GetTargets();
+
+	const entities_in_air = [];
+	var on_ground = 0;
+
+	for(var i = 0; i < enemies.length;i++)
+	{
+		const enemy = enemies[i];
+
+		if(Entity.IsInAir(enemy)) 
+			entities_in_air.push(enemy);
+		else 
+			on_ground++;
+	}
+
+	if(on_ground)
+	{
+		for(var i = 0; i < entities_in_air.length;i++)
+			Ragebot.IgnoreTarget(entities_in_air[i]);
+	}
+
+}
+
+ragebot.run_ragebot = function()
+{
+	ragebot.faster_dt();
+	ragebot.faster_recharge();
+	ragebot.improved_target_selection();
+}
+
+// RAGEBOT
+Cheat.RegisterCallback("CreateMove", "ragebot.run_ragebot");
+//
+
+//#region Callbacks ANTIAIM
 Cheat.RegisterCallback("CreateMove", "antiaim.run_antiaim");
-Cheat.RegisterCallback("player_hurt", "antiaim.on_player_hurt");
+Cheat.RegisterCallback("CreateMove", "antiaim.reset_after");
+Cheat.RegisterCallback("CreateMove", "antiaim.run_legit_aa");
 Cheat.RegisterCallback("bullet_impact", "antiaim.on_bullet_impact");
+Cheat.RegisterCallback("player_hurt", "antiaim.on_player_hurt");
 Cheat.RegisterCallback("round_start", "antiaim.on_round_start");
 Cheat.RegisterCallback("Draw", "antiaim.draw");
 Cheat.RegisterCallback("Draw","render_menu");
@@ -2044,3 +2408,163 @@ var key_names = ["-", "mouse1", "mouse2", "break", "mouse3", "mouse4", "mouse5",
     "-", "-", "-", "-", "-", "-", "-", "-", "-",
     "-", "-", "-", "-", "-", "-", "-", "-", "-",
     "-", "-"];
+
+	
+/* region: config */
+const config = {};
+
+config.save = function () {
+
+    // loop thru all config variables
+	for(var i = 0; i < menu.children.length;i++)
+	{
+		for(var j = 0; j < menu.children[i].children.length;j++)
+		{
+			DataFile.SetKey("config.Phoenix", menu.children[i].text + " " + menu.children[i].children[j].name , JSON.stringify(String(menu.children[i].children[j].cfg)));
+		}
+	}
+    // save/create file
+    DataFile.Save("config.Phoenix");
+
+    // log
+	Cheat.PrintColor([230, 104, 44, 255], "[phoenix]");
+    Cheat.Print(" Configuration saved.\n");
+}
+config.load = function () {
+
+    // load the file
+    DataFile.Load("config.Phoenix");
+
+    // loop thru all config variables
+	for(var i = 0; i < menu.children.length;i++)
+	{
+		for(var j = 0; j < menu.children[i].children.length;j++)
+		{
+			var string = DataFile.GetKey("config.Phoenix", menu.children[i].text + " " + menu.children[i].children[j].name);
+			if (!string)
+            	continue;
+
+			// parse JSON
+			
+			var data = JSON.parse(string);
+
+			var obj = menu.children[i].children[j];
+			
+			if(data == "undefined")
+				data = null;
+
+		//	Cheat.Print(menu.children[i].children[j].name + " " + data + "\n")
+			if(obj.type == "checkbox" || obj.type == "slider")
+			{
+				if(obj.type == "checkbox")
+				{
+					if(data == "true")
+						menu.children[i].children[j].value = true;
+					else 
+						menu.children[i].children[j].value = false;
+					
+					menu.children[i].children[j].cfg = menu.children[i].children[j].value;
+				}
+				else 
+				{
+					menu.children[i].children[j].value = parseInt(data);
+					menu.children[i].children[j].cfg = parseInt(data);
+				}
+			}
+			else if(obj.type == "combo")
+			{
+				if(data != "null")
+				{
+					menu.children[i].children[j].selected = parseInt(data);
+				}
+				else 
+				{
+					menu.children[i].children[j].selected = null;
+				}
+				menu.children[i].children[j].cfg = menu.children[i].children[j].selected;
+			}
+			else if(obj.type == "multi")
+			{
+				//Cheat.Print(data + '\n')
+				if(data == "") continue;
+				
+				if(data[0] == ",")
+					menu.children[i].children[j].selected = data.slice(1,data.length).split(",");
+				else
+					menu.children[i].children[j].selected = data.split(",");
+
+				menu.children[i].children[j].cfg = menu.children[i].children[j].selected
+			}
+			else if(obj.type == "keybind")
+			{
+				if(data == "null")
+					menu.children[i].children[j].key = null;
+				else 
+				{
+					menu.children[i].children[j].key = parseInt(data);
+					menu.children[i].children[j].cfg = menu.children[i].children[j].key;
+				}
+				
+				
+			}
+			
+		
+		}
+	}
+
+}
+
+config.dump_aa_data = function()
+{
+	for(var i = 0; i < player_list.length;i++)
+	{
+		var ent = player_list[i].ent_index;
+		var shots = player_list[i].shot_logs;
+		
+		if(Entity.IsValid(ent) && Entity.IsEnemy(ent))
+		{
+			//Cheat.Print(Entity.GetName(ent) + ":\n")
+			for(var j = 0; j < shots.length;j++)
+			{
+				var shot = shots[j];
+				var shot_aa = shot.cur_antiaim;
+				//Cheat.Print(shot.hit + " " + shot.hitgroup + "\n")
+
+				var auto_dir = shot_aa.auto_direction == FREESTAND ? "FREESTAND" : "OPPOSITE";
+				var side = shot_aa.side;
+				var desync = shot_aa.desync;
+				var max_desync = shot.max_desync;
+
+				if(shot.hit && shot.hitgroup == Hitgroups.head)
+				{
+					Cheat.Print(Entity.GetName(ent) + " hit our head | Auto Direction: " + auto_dir + " | Side: " + side + " | Desync: " + desync + " | Max Desync: " + max_desync + "\n");
+				}
+				else if(!shot.hit)
+				{
+					Cheat.Print(Entity.GetName(ent) + " missed our head | Auto Direction: " + auto_dir + " | Side: " + side + " | Desync: " + desync + " | Max Desync: " + max_desync + "\n");
+				}
+			}
+			if(shots.length > 0)
+			{
+				Cheat.Print("\n");
+				Cheat.Print('-------------------------');
+				Cheat.Print("\n");
+			}
+			
+		}
+	}
+}
+function on_unload()
+{
+	Exploit.EnableRecharge();
+	if(menu_was_opened)
+    	config.save();
+	
+	//config.dump_aa_data();
+	
+}
+
+config.load();
+
+
+Cheat.RegisterCallback("Unload", "on_unload")
